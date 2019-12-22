@@ -8,14 +8,29 @@ import {Path} from './internal-path'
 const IS_WINDOWS = process.platform === 'win32'
 
 export class Pattern {
-  negate: boolean = false
-  searchPath: string
-  private minimatch: IMinimatch
-  private rootRegExp: RegExp
-  private trailingSlash: boolean
+  readonly negate: boolean = false
+  readonly searchPath: string
+  readonly segments: string[]
+  private readonly minimatch: IMinimatch
+  private readonly rootRegExp: RegExp
+  private readonly trailingSlash: boolean
 
-  constructor(pattern: string) {
-    pattern = pattern || ''
+  /* eslint-disable no-dupe-class-members */
+  // Disable no-dupe-class-members due to false positive for method overload
+  // https://github.com/typescript-eslint/typescript-eslint/issues/291
+
+  constructor(pattern: string)
+  constructor(negate: boolean, segments: string[])
+  constructor(patternOrNegate: string | boolean, segments?: string[]) {
+    // Pattern
+    let pattern: string
+    if (typeof patternOrNegate === 'string') {
+      pattern = patternOrNegate
+    } else {
+      pattern = `${patternOrNegate ? '!' : ''}${new Path(
+        segments as string[]
+      ).toString()}`
+    }
 
     // Negate
     while (pattern.startsWith('!')) {
@@ -26,14 +41,20 @@ export class Pattern {
     // Normalize slashes and ensure rooted
     pattern = this.fixupPattern(pattern)
 
+    // Segments
+    this.segments = new Path(pattern).segments
+
     // Trailing slash indicates the pattern should only match directories, not regular files
     this.trailingSlash = pathHelper
       .normalizeSeparators(pattern)
       .endsWith(path.sep)
     pattern = pathHelper.safeTrimTrailingSeparator(pattern)
 
-    // Search path
-    const searchSegments = this.getLiterals(pattern, true)
+    // Search path (literal path prior to the first glob segment)
+    let foundGlob = false
+    const searchSegments = this.segments
+      .map(x => this.getLiteral(x))
+      .filter(x => !foundGlob && !(foundGlob = x === ''))
     this.searchPath = new Path(searchSegments).toString()
 
     // Root RegExp (required when determining partial match)
@@ -82,6 +103,9 @@ export class Pattern {
     )
   }
 
+  // static create(negate: boolean, segments: string[]): Pattern {
+  // }
+
   /**
    * Normalizes slashes and ensures rooted
    */
@@ -90,7 +114,9 @@ export class Pattern {
     assert(pattern, 'pattern cannot be empty')
 
     // Must not use C: and C:foo format on Windows (for simplicity)
-    const literalSegments = this.getLiterals(pattern)
+    const literalSegments = new Path(pattern).segments.map(x =>
+      this.getLiteral(x)
+    )
     assert(
       !IS_WINDOWS || !/^[A-Z]:$/i.test(literalSegments[0]),
       `The pattern '${pattern}' uses an unsupported root-directory prefix. When a drive letter is specified, use absolute path syntax.`
@@ -105,8 +131,8 @@ export class Pattern {
 
     // Must not contain globs in root, e.g. \\foo\b*
     assert(
-      literalSegments[0] || !pathHelper.isRooted(pattern),
-      `Invalid pattern '${pattern}'. Root segment must not contain globs`
+      !pathHelper.isRooted(pattern) || literalSegments[0],
+      `Invalid pattern '${pattern}'. Root segment must not contain globs.`
     )
 
     // Normalize slashes
@@ -117,41 +143,12 @@ export class Pattern {
       pattern = this.globEscape(process.cwd()) + pattern.substr(1)
       pattern = pathHelper.normalizeSeparators(pattern)
     }
-
-    // Root the pattern
-    if (!pathHelper.isRooted(pattern)) {
+    // Otherwise ensure rooted
+    else if (!pathHelper.isRooted(pattern)) {
       pattern = pathHelper.ensureRooted(this.globEscape(process.cwd()), pattern)
     }
 
     return pattern
-  }
-
-  /**
-   * Splits a pattern into segments and attempts to unescape each segment to create a
-   * literal segment. Otherwise creates an empty segment.
-   * @param pattern        The pattern
-   * @param stopWhenEmpty  Indicates whether to only include segments prior to the first
-   *                       empty segment (empty indicates failure to convert to literal)
-   */
-  private getLiterals(
-    pattern: string,
-    stopWhenEmpty: boolean = false
-  ): string[] {
-    // All
-    const literals = new Path(pattern).segments.map(x => this.getLiteral(x))
-    if (!stopWhenEmpty) {
-      return literals
-    }
-
-    // Filtered
-    const result: string[] = []
-    for (const literal of literals) {
-      if (!literal) {
-        break
-      }
-      result.push(literal)
-    }
-    return result
   }
 
   /**

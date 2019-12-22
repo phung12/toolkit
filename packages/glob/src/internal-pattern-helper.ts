@@ -1,7 +1,6 @@
 import * as pathHelper from './internal-path-helper'
 import {IGlobOptions} from './internal-glob-options'
 import {MatchKind} from './internal-match-kind'
-import {Path} from './internal-path'
 import {Pattern} from './internal-pattern'
 
 const IS_WINDOWS = process.platform === 'win32'
@@ -81,25 +80,23 @@ export function match(patterns: Pattern[], itemPath: string): MatchKind {
 export function parse(patterns: string[], options: IGlobOptions): Pattern[] {
   const result: Pattern[] = []
 
-  for (let patternString of patterns) {
+  for (const patternString of patterns) {
     // Comment
     if (patternString.startsWith('#')) {
       continue
     }
 
     // Push
-    result.push(new Pattern(patternString))
+    const pattern = new Pattern(patternString)
+    result.push(pattern)
 
-    // Implicitly match descendant paths
-    if (options.implicitDescendants) {
-      // Trailing globstar?
-      const segments = new Path(patternString).segments
-      if (segments[segments.length - 1] !== '**') {
-        // Push
-        segments.push('**')
-        patternString = new Path(segments).toString()
-        result.push(new Pattern(patternString))
-      }
+    // Implicit descendants?
+    if (
+      options.implicitDescendants &&
+      pattern.segments[pattern.segments.length - 1] !== '**'
+    ) {
+      // Push
+      result.push(new Pattern(pattern.negate, pattern.segments.concat('**')))
     }
   }
 

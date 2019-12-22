@@ -12,85 +12,167 @@ const IS_WINDOWS = process.platform === 'win32'
  * These test focus on the ability of glob to find files
  * and not on the pattern matching aspect
  */
-describe('glob (search)', () => {
+describe('glob', () => {
   beforeAll(async () => {
     await io.rmRF(getTestTemp())
   })
 
-  it('returns hidden files', async () => {
+  it('detects cycle', async () => {
     // Create the following layout:
-    //   search_hidden_files
-    //   search_hidden_files/.emptyFolder
-    //   search_hidden_files/.file
-    //   search_hidden_files/.folder
-    //   search_hidden_files/.folder/file
-    const root = path.join(getTestTemp(), 'search_hidden_files')
-    await createHiddenDirectory(path.join(root, '.emptyFolder'))
-    await createHiddenDirectory(path.join(root, '.folder'))
-    await createHiddenFile(path.join(root, '.file'), 'test .file content')
-    await fs.writeFile(
-      path.join(root, '.folder', 'file'),
-      'test .folder/file content'
-    )
+    //   <root>
+    //   <root>/file
+    //   <root>/symDir -> <root>
+    const root = path.join(getTestTemp(), 'glob-detects-cycle')
+    await fs.mkdir(root, {recursive: true})
+    await fs.writeFile(path.join(root, 'file'), 'test file content')
+    await createSymlinkDir(root, path.join(root, 'symDir'))
 
     const itemPaths = await glob.glob(root)
-    expect(itemPaths).toHaveLength(5)
-    expect(itemPaths[0]).toBe(root)
-    expect(itemPaths[1]).toBe(path.join(root, '.emptyFolder'))
-    expect(itemPaths[2]).toBe(path.join(root, '.file'))
-    expect(itemPaths[3]).toBe(path.join(root, '.folder'))
-    expect(itemPaths[4]).toBe(path.join(root, '.folder', 'file'))
+    expect(itemPaths).toEqual([root, path.join(root, 'file')])
+    // todo: ? expect(itemPaths[2]).toBe(path.join(root, 'symDir'))
   })
 
-  it('returns depth first', async () => {
+  it('detects deep cycle starting from middle', async () => {
     // Create the following layout:
-    //   find_depth_first/a_file
-    //   find_depth_first/b_folder
-    //   find_depth_first/b_folder/a_file
-    //   find_depth_first/b_folder/b_folder
-    //   find_depth_first/b_folder/b_folder/file
-    //   find_depth_first/b_folder/c_file
-    //   find_depth_first/c_file
-    const root = path.join(getTestTemp(), 'search_depth_first')
-    await fs.mkdir(path.join(root, 'b_folder', 'b_folder'), {recursive: true})
-    await fs.writeFile(path.join(root, 'a_file'), 'test a_file content')
+    //   <root>
+    //   <root>/file-under-root
+    //   <root>/folder-a
+    //   <root>/folder-a/file-under-a
+    //   <root>/folder-a/folder-b
+    //   <root>/folder-a/folder-b/file-under-b
+    //   <root>/folder-a/folder-b/folder-c
+    //   <root>/folder-a/folder-b/folder-c/file-under-c
+    //   <root>/folder-a/folder-b/folder-c/sym-folder -> <root>
+    const root = path.join(
+      getTestTemp(),
+      'glob-detects-deep-cycle-starting-from-middle'
+    )
+    await fs.mkdir(path.join(root, 'folder-a', 'folder-b', 'folder-c'), {
+      recursive: true
+    })
     await fs.writeFile(
-      path.join(root, 'b_folder', 'a_file'),
-      'test b_folder/a_file content'
+      path.join(root, 'file-under-root'),
+      'test file under root contents'
     )
     await fs.writeFile(
-      path.join(root, 'b_folder', 'b_folder', 'file'),
-      'test b_folder/b_folder/file content'
+      path.join(root, 'folder-a', 'file-under-a'),
+      'test file under a contents'
     )
     await fs.writeFile(
-      path.join(root, 'b_folder', 'c_file'),
-      'test b_folder/c_file content'
+      path.join(root, 'folder-a', 'folder-b', 'file-under-b'),
+      'test file under b contents'
     )
-    await fs.writeFile(path.join(root, 'c_file'), 'test c_file content')
+    await fs.writeFile(
+      path.join(root, 'folder-a', 'folder-b', 'folder-c', 'file-under-c'),
+      'test file under c contents'
+    )
+    await createSymlinkDir(
+      root,
+      path.join(root, 'folder-a', 'folder-b', 'folder-c', 'sym-folder')
+    )
+    await fs.stat(
+      path.join(
+        root,
+        'folder-a',
+        'folder-b',
+        'folder-c',
+        'sym-folder',
+        'file-under-root'
+      )
+    )
 
-    const itemPaths = await glob.glob(root)
-    expect(itemPaths).toHaveLength(8)
-    expect(itemPaths[0]).toBe(root)
-    expect(itemPaths[1]).toBe(path.join(root, 'a_file'))
-    expect(itemPaths[2]).toBe(path.join(root, 'b_folder'))
-    expect(itemPaths[3]).toBe(path.join(root, 'b_folder', 'a_file'))
-    expect(itemPaths[4]).toBe(path.join(root, 'b_folder', 'b_folder'))
-    expect(itemPaths[5]).toBe(path.join(root, 'b_folder', 'b_folder', 'file'))
-    expect(itemPaths[6]).toBe(path.join(root, 'b_folder', 'c_file'))
-    expect(itemPaths[7]).toBe(path.join(root, 'c_file'))
+    const itemPaths = await glob.glob(path.join(root, 'folder-a', 'folder-b'))
+    expect(itemPaths).toEqual([
+      path.join(root, 'folder-a', 'folder-b'),
+      path.join(root, 'folder-a', 'folder-b', 'file-under-b'),
+      path.join(root, 'folder-a', 'folder-b', 'folder-c'),
+      path.join(root, 'folder-a', 'folder-b', 'folder-c', 'file-under-c'),
+      path.join(root, 'folder-a', 'folder-b', 'folder-c', 'sym-folder'),
+      path.join(
+        root,
+        'folder-a',
+        'folder-b',
+        'folder-c',
+        'sym-folder',
+        'file-under-root'
+      ),
+      path.join(
+        root,
+        'folder-a',
+        'folder-b',
+        'folder-c',
+        'sym-folder',
+        'folder-a'
+      ),
+      path.join(
+        root,
+        'folder-a',
+        'folder-b',
+        'folder-c',
+        'sym-folder',
+        'folder-a',
+        'file-under-a'
+      )
+    ])
   })
 
-  it('returns empty when not exists', async () => {
-    const itemPaths = await glob.glob(path.join(getTestTemp(), 'nosuch'))
-    expect(itemPaths).toHaveLength(0)
+  it('detects cycle starting from symlink', async () => {
+    // Create the following layout:
+    //   <root>
+    //   <root>/file
+    //   <root>/symDir -> <root>
+    const root: string = path.join(
+      getTestTemp(),
+      'glob-detects-cycle-starting-from-symlink'
+    )
+    await fs.mkdir(root, {recursive: true})
+    await fs.writeFile(path.join(root, 'file'), 'test file content')
+    await createSymlinkDir(root, path.join(root, 'symDir'))
+    await fs.stat(path.join(root, 'symDir'))
+
+    const itemPaths = await glob.glob(path.join(root, 'symDir'))
+    expect(itemPaths).toEqual([
+      path.join(root, 'symDir'),
+      path.join(root, 'symDir', 'file')
+    ])
+    // todo: ? expect(itemPaths[2]).toBe(path.join(root, 'symDir', 'symDir'));
   })
 
-  it('does not follow specified symlink when follow symlink false', async () => {
+  it('does not follow symlink when followSymbolicLink=false', async () => {
+    // Create the following layout:
+    //   <root>
+    //   <root>/realDir
+    //   <root>/realDir/file
+    //   <root>/symDir -> <root>/realDir
+    const root = path.join(
+      getTestTemp(),
+      'glob-does-not-follow-symlink-when-follow-false'
+    )
+    await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
+    await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
+    await createSymlinkDir(
+      path.join(root, 'realDir'),
+      path.join(root, 'symDir')
+    )
+
+    const itemPaths = await glob.glob(root, {followSymbolicLinks: false})
+    expect(itemPaths).toEqual([
+      root,
+      path.join(root, 'realDir'),
+      path.join(root, 'realDir', 'file'),
+      path.join(root, 'symDir')
+    ])
+  })
+
+  it('does not follow symlink when search path is symlink and followSymbolicLink=false', async () => {
     // Create the following layout:
     //   realDir
     //   realDir/file
     //   symDir -> realDir
-    const root = path.join(getTestTemp(), 'search_no_follow_specified_symlink')
+    const root = path.join(
+      getTestTemp(),
+      'glob-does-not-follow-symlink-when-search-path-is-symlink-and-follow-false'
+    )
     await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
     await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
     await createSymlinkDir(
@@ -101,58 +183,22 @@ describe('glob (search)', () => {
     const itemPaths = await glob.glob(path.join(root, 'symDir'), {
       followSymbolicLinks: false
     })
-    expect(itemPaths).toHaveLength(1)
-    expect(itemPaths[0]).toBe(path.join(root, 'symDir'))
+    expect(itemPaths).toEqual([path.join(root, 'symDir')])
   })
 
-  it('follows specified symlink', async () => {
-    // Create the following layout:
-    //   realDir
-    //   realDir/file
-    //   symDir -> realDir
-    const root = path.join(getTestTemp(), 'search_follow_specified_symlink')
-    await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
-    await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
-    await createSymlinkDir(
-      path.join(root, 'realDir'),
-      path.join(root, 'symDir')
-    )
-
-    const itemPaths = await glob.glob(path.join(root, 'symDir'))
-    expect(itemPaths).toHaveLength(2)
-    expect(itemPaths[0]).toBe(path.join(root, 'symDir'))
-    expect(itemPaths[1]).toBe(path.join(root, 'symDir', 'file'))
-  })
-
-  it('does not follow symlink when follow symlink false', async () => {
+  it('does not return broken symlink', async () => {
     // Create the following layout:
     //   <root>
+    //   <root>/brokenSym -> <root>/noSuch
     //   <root>/realDir
     //   <root>/realDir/file
     //   <root>/symDir -> <root>/realDir
-    const root = path.join(getTestTemp(), 'search_no_follow_symlink')
-    await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
-    await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
+    const root = path.join(getTestTemp(), 'glob-does-not-return-broken-symlink')
+    await fs.mkdir(root, {recursive: true})
     await createSymlinkDir(
-      path.join(root, 'realDir'),
-      path.join(root, 'symDir')
+      path.join(root, 'noSuch'),
+      path.join(root, 'brokenSym')
     )
-
-    const itemPaths = await glob.glob(root, {followSymbolicLinks: false})
-    expect(itemPaths).toHaveLength(4)
-    expect(itemPaths[0]).toBe(root)
-    expect(itemPaths[1]).toBe(path.join(root, 'realDir'))
-    expect(itemPaths[2]).toBe(path.join(root, 'realDir', 'file'))
-    expect(itemPaths[3]).toBe(path.join(root, 'symDir'))
-  })
-
-  it('follows symlink', async () => {
-    // Create the following layout:
-    //   <root>
-    //   <root>/realDir
-    //   <root>/realDir/file
-    //   <root>/symDir -> <root>/realDir
-    const root = path.join(getTestTemp(), 'search_follow_symlink')
     await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
     await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
     await createSymlinkDir(
@@ -161,15 +207,80 @@ describe('glob (search)', () => {
     )
 
     const itemPaths = await glob.glob(root)
-    expect(itemPaths).toHaveLength(5)
-    expect(itemPaths[0]).toBe(root)
-    expect(itemPaths[1]).toBe(path.join(root, 'realDir'))
-    expect(itemPaths[2]).toBe(path.join(root, 'realDir', 'file'))
-    expect(itemPaths[3]).toBe(path.join(root, 'symDir'))
-    expect(itemPaths[4]).toBe(path.join(root, 'symDir', 'file'))
+    expect(itemPaths).toEqual([
+      root,
+      path.join(root, 'realDir'),
+      path.join(root, 'realDir', 'file'),
+      path.join(root, 'symDir'),
+      path.join(root, 'symDir', 'file')
+    ])
   })
 
-  it('result includes broken symlink when follow symlink false', async () => {
+  it('does not return broken symlink when search path is broken symlink', async () => {
+    // Create the following layout:
+    //   <root>
+    //   <root>/brokenSym -> <root>/noSuch
+    const root = path.join(
+      getTestTemp(),
+      'glob-does-not-return-broken-symlink-when-search-path-is-broken-symlink'
+    )
+    await fs.mkdir(root, {recursive: true})
+    const brokenSymPath = path.join(root, 'brokenSym')
+    await createSymlinkDir(path.join(root, 'noSuch'), brokenSymPath)
+    await fs.lstat(brokenSymPath)
+
+    const itemPaths = await glob.glob(brokenSymPath)
+    expect(itemPaths).toEqual([])
+  })
+
+  it('follows symlink', async () => {
+    // Create the following layout:
+    //   <root>
+    //   <root>/realDir
+    //   <root>/realDir/file
+    //   <root>/symDir -> <root>/realDir
+    const root = path.join(getTestTemp(), 'glob-follows-symlink')
+    await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
+    await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
+    await createSymlinkDir(
+      path.join(root, 'realDir'),
+      path.join(root, 'symDir')
+    )
+
+    const itemPaths = await glob.glob(root)
+    expect(itemPaths).toEqual([
+      root,
+      path.join(root, 'realDir'),
+      path.join(root, 'realDir', 'file'),
+      path.join(root, 'symDir'),
+      path.join(root, 'symDir', 'file')
+    ])
+  })
+
+  it('follows symlink when search path is symlink', async () => {
+    // Create the following layout:
+    //   realDir
+    //   realDir/file
+    //   symDir -> realDir
+    const root = path.join(
+      getTestTemp(),
+      'glob-follows-symlink-when-search-path-is-symlink'
+    )
+    await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
+    await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
+    await createSymlinkDir(
+      path.join(root, 'realDir'),
+      path.join(root, 'symDir')
+    )
+
+    const itemPaths = await glob.glob(path.join(root, 'symDir'))
+    expect(itemPaths).toEqual([
+      path.join(root, 'symDir'),
+      path.join(root, 'symDir', 'file')
+    ])
+  })
+
+  it('returns broken symlink when followSymbolicLinks=false', async () => {
     // Create the following layout:
     //   <root>
     //   <root>/brokenSym -> <root>/noSuch
@@ -178,7 +289,7 @@ describe('glob (search)', () => {
     //   <root>/symDir -> <root>/realDir
     const root = path.join(
       getTestTemp(),
-      'search_no_follow_symlink_result_includes_broken_symlink'
+      'glob-returns-broken-symlink-when-follow-false'
     )
     await fs.mkdir(root, {recursive: true})
     await createSymlinkDir(
@@ -193,21 +304,22 @@ describe('glob (search)', () => {
     )
 
     const itemPaths = await glob.glob(root, {followSymbolicLinks: false})
-    expect(itemPaths).toHaveLength(5)
-    expect(itemPaths[0]).toBe(root)
-    expect(itemPaths[1]).toBe(path.join(root, 'brokenSym'))
-    expect(itemPaths[2]).toBe(path.join(root, 'realDir'))
-    expect(itemPaths[3]).toBe(path.join(root, 'realDir', 'file'))
-    expect(itemPaths[4]).toBe(path.join(root, 'symDir'))
+    expect(itemPaths).toEqual([
+      root,
+      path.join(root, 'brokenSym'),
+      path.join(root, 'realDir'),
+      path.join(root, 'realDir', 'file'),
+      path.join(root, 'symDir')
+    ])
   })
 
-  it('result includes specified broken symlink when follow symlink false', async () => {
+  it('returns broken symlink when search path is broken symlink and followSymbolicLinks=false', async () => {
     // Create the following layout:
     //   <root>
     //   <root>/brokenSym -> <root>/noSuch
     const root = path.join(
       getTestTemp(),
-      'search_no_follow_symlink_result_includes_specified_broken_symlink'
+      'glob-returns-broken-symlink-when-search-path-is-broken-symlink-and-follow-false'
     )
     await fs.mkdir(root, {recursive: true})
     const brokenSymPath = path.join(root, 'brokenSym')
@@ -216,70 +328,105 @@ describe('glob (search)', () => {
     const itemPaths = await glob.glob(brokenSymPath, {
       followSymbolicLinks: false
     })
-    expect(itemPaths).toHaveLength(1)
-    expect(itemPaths[0]).toBe(brokenSymPath)
+    expect(itemPaths).toEqual([brokenSymPath])
   })
 
-  it('result includes nested broken symlink when follow symlink false', async () => {
+  it('returns depth first', async () => {
+    // Create the following layout:
+    //   <root>/a-file
+    //   <root>/b-folder
+    //   <root>/b-folder/a-file
+    //   <root>/b-folder/b-folder
+    //   <root>/b-folder/b-folder/file
+    //   <root>/b-folder/c-file
+    //   <root>/c-file
+    const root = path.join(getTestTemp(), 'glob-returns-depth-first')
+    await fs.mkdir(path.join(root, 'b-folder', 'b-folder'), {recursive: true})
+    await fs.writeFile(path.join(root, 'a-file'), 'test a-file content')
+    await fs.writeFile(
+      path.join(root, 'b-folder', 'a-file'),
+      'test b-folder/a-file content'
+    )
+    await fs.writeFile(
+      path.join(root, 'b-folder', 'b-folder', 'file'),
+      'test b-folder/b-folder/file content'
+    )
+    await fs.writeFile(
+      path.join(root, 'b-folder', 'c-file'),
+      'test b-folder/c-file content'
+    )
+    await fs.writeFile(path.join(root, 'c-file'), 'test c-file content')
+
+    const itemPaths = await glob.glob(root)
+    expect(itemPaths).toEqual([
+      root,
+      path.join(root, 'a-file'),
+      path.join(root, 'b-folder'),
+      path.join(root, 'b-folder', 'a-file'),
+      path.join(root, 'b-folder', 'b-folder'),
+      path.join(root, 'b-folder', 'b-folder', 'file'),
+      path.join(root, 'b-folder', 'c-file'),
+      path.join(root, 'c-file')
+    ])
+  })
+
+  it('returns empty when search path does not exist', async () => {
+    const itemPaths = await glob.glob(path.join(getTestTemp(), 'nosuch'))
+    expect(itemPaths).toEqual([])
+  })
+
+  it('returns hidden files', async () => {
+    // Create the following layout:
+    //   <root>
+    //   <root>/.emptyFolder
+    //   <root>/.file
+    //   <root>/.folder
+    //   <root>/.folder/file
+    const root = path.join(getTestTemp(), 'glob-returns-hidden-files')
+    await createHiddenDirectory(path.join(root, '.emptyFolder'))
+    await createHiddenDirectory(path.join(root, '.folder'))
+    await createHiddenFile(path.join(root, '.file'), 'test .file content')
+    await fs.writeFile(
+      path.join(root, '.folder', 'file'),
+      'test .folder/file content'
+    )
+
+    const itemPaths = await glob.glob(root)
+    expect(itemPaths).toEqual([
+      root,
+      path.join(root, '.emptyFolder'),
+      path.join(root, '.file'),
+      path.join(root, '.folder'),
+      path.join(root, '.folder', 'file')
+    ])
+  })
+
+  it('returns normalized paths', async () => {
+    // Create the following layout:
+    //   <root>/hello/world.txt
+    const root: string = path.join(
+      getTestTemp(),
+      'glob-returns-normalized-paths'
+    )
+    await fs.mkdir(path.join(root, 'hello'), {recursive: true})
+    await fs.writeFile(path.join(root, 'hello', 'world.txt'), '')
+
+    const itemPaths = await glob.glob(
+      `${root}${path.sep}${path.sep}${path.sep}hello`
+    )
+    expect(itemPaths).toEqual([
+      path.join(root, 'hello'),
+      path.join(root, 'hello', 'world.txt')
+    ])
+  })
+
+  it('throws when match broken symlink and omitBrokenSymbolicLinks=false', async () => {
     // Create the following layout:
     //   <root>
     //   <root>/brokenSym -> <root>/noSuch
-    //   <root>/realDir
-    //   <root>/realDir/file
-    //   <root>/symDir -> <root>/realDir
     const root = path.join(
       getTestTemp(),
-      'search_no_follow_symlink_result_includes_nested_broken_symlink'
-    )
-    await fs.mkdir(root, {recursive: true})
-    await createSymlinkDir(
-      path.join(root, 'noSuch'),
-      path.join(root, 'brokenSym')
-    )
-    await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
-    await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
-    await createSymlinkDir(
-      path.join(root, 'realDir'),
-      path.join(root, 'symDir')
-    )
-
-    const itemPaths = await glob.glob(root, {followSymbolicLinks: false})
-    expect(itemPaths).toHaveLength(5)
-    expect(itemPaths[0]).toBe(root)
-    expect(itemPaths[1]).toBe(path.join(root, 'brokenSym'))
-    expect(itemPaths[2]).toBe(path.join(root, 'realDir'))
-    expect(itemPaths[3]).toBe(path.join(root, 'realDir', 'file'))
-    expect(itemPaths[4]).toBe(path.join(root, 'symDir'))
-  })
-
-  it('does not allow specified broken symlink when omit broken symlinks false', async () => {
-    // Create the following layout:
-    //   <root>
-    //   <root>/brokenSym -> <root>/noSuch
-    const root = path.join(
-      getTestTemp(),
-      'search_throws_when_specified_broken_symlink_and_omit_broken_symlink_false'
-    )
-    await fs.mkdir(root, {recursive: true})
-    const brokenSymPath = path.join(root, 'brokenSym')
-    await createSymlinkDir(path.join(root, 'noSuch'), brokenSymPath)
-    await fs.lstat(brokenSymPath)
-
-    try {
-      await glob.glob(brokenSymPath, {omitBrokenSymbolicLinks: false})
-      throw new Error('Expected tl.find to throw')
-    } catch (err) {
-      expect(err.message).toMatch(/broken symbolic link/)
-    }
-  })
-
-  it('does not allow broken symlink when omit broken symlinks false', async () => {
-    // Create the following layout:
-    //   <root>
-    //   <root>/brokenSym -> <root>/noSuch
-    const root = path.join(
-      getTestTemp(),
-      'search_not_allow_broken_symlink_when_omit_broken_symlink_false'
+      'glob-throws-when-match-broken-symlink-and-omit-false'
     )
     await fs.mkdir(root, {recursive: true})
     await createSymlinkDir(
@@ -295,206 +442,26 @@ describe('glob (search)', () => {
     }
   })
 
-  it('omit broken symlink', async () => {
-    // Create the following layout:
-    //   <root>
-    //   <root>/brokenSym -> <root>/noSuch
-    //   <root>/realDir
-    //   <root>/realDir/file
-    //   <root>/symDir -> <root>/realDir
-    const root = path.join(getTestTemp(), 'search_omit_broken_symlink')
-    await fs.mkdir(root, {recursive: true})
-    await createSymlinkDir(
-      path.join(root, 'noSuch'),
-      path.join(root, 'brokenSym')
-    )
-    await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
-    await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
-    await createSymlinkDir(
-      path.join(root, 'realDir'),
-      path.join(root, 'symDir')
-    )
-
-    const itemPaths = await glob.glob(root)
-    expect(itemPaths).toHaveLength(5)
-    expect(itemPaths[0]).toBe(root)
-    expect(itemPaths[1]).toBe(path.join(root, 'realDir'))
-    expect(itemPaths[2]).toBe(path.join(root, 'realDir', 'file'))
-    expect(itemPaths[3]).toBe(path.join(root, 'symDir'))
-    expect(itemPaths[4]).toBe(path.join(root, 'symDir', 'file'))
-  })
-
-  it('omit specified broken symlink', async () => {
+  it('throws when search path is broken symlink and omitBrokenSymbolicLinks=false', async () => {
     // Create the following layout:
     //   <root>
     //   <root>/brokenSym -> <root>/noSuch
     const root = path.join(
       getTestTemp(),
-      'search_omit_specified_broken_symlink'
+      'glob-throws-when-search-path-is-broken-symlink-and-omit-false'
     )
     await fs.mkdir(root, {recursive: true})
     const brokenSymPath = path.join(root, 'brokenSym')
     await createSymlinkDir(path.join(root, 'noSuch'), brokenSymPath)
     await fs.lstat(brokenSymPath)
 
-    const itemPaths = await glob.glob(brokenSymPath)
-    expect(itemPaths).toHaveLength(0)
+    try {
+      await glob.glob(brokenSymPath, {omitBrokenSymbolicLinks: false})
+      throw new Error('Expected tl.find to throw')
+    } catch (err) {
+      expect(err.message).toMatch(/broken symbolic link/)
+    }
   })
-
-  it('detects cycle', async () => {
-    // Create the following layout:
-    //   <root>
-    //   <root>/file
-    //   <root>/symDir -> <root>
-    const root = path.join(getTestTemp(), 'search_detects_cycle')
-    await fs.mkdir(root)
-    await fs.writeFile(path.join(root, 'file'), 'test file content')
-    await createSymlinkDir(root, path.join(root, 'symDir'))
-
-    const itemPaths = await glob.glob(root)
-    expect(itemPaths).toHaveLength(2)
-    expect(itemPaths[0]).toBe(root)
-    expect(itemPaths[1]).toBe(path.join(root, 'file'))
-    // todo: ? expect(itemPaths[2]).toBe(path.join(root, 'symDir'))
-  })
-
-  it('detects cycle starting from symlink', async () => {
-    // Create the following layout:
-    //   <root>
-    //   <root>/file
-    //   <root>/symDir -> <root>
-    const root: string = path.join(
-      getTestTemp(),
-      'search_detects_cycle_starting_from_symlink'
-    )
-    await fs.mkdir(root, {recursive: true})
-    await fs.writeFile(path.join(root, 'file'), 'test file content')
-    await createSymlinkDir(root, path.join(root, 'symDir'))
-    await fs.stat(path.join(root, 'symDir'))
-
-    const itemPaths = await glob.glob(path.join(root, 'symDir'))
-    expect(itemPaths).toHaveLength(2)
-    expect(itemPaths[0]).toBe(path.join(root, 'symDir'))
-    expect(itemPaths[1]).toBe(path.join(root, 'symDir', 'file'))
-    // todo: ? expect(itemPaths[2]).toBe(path.join(root, 'symDir', 'symDir'));
-  })
-
-  it('detects deep cycle starting from middle', async () => {
-    // Create the following layout:
-    //   <root>
-    //   <root>/file_under_root
-    //   <root>/folder_a
-    //   <root>/folder_a/file_under_a
-    //   <root>/folder_a/folder_b
-    //   <root>/folder_a/folder_b/file_under_b
-    //   <root>/folder_a/folder_b/folder_c
-    //   <root>/folder_a/folder_b/folder_c/file_under_c
-    //   <root>/folder_a/folder_b/folder_c/sym_folder -> <root>
-    const root = path.join(
-      getTestTemp(),
-      'search_detects_deep_cycle_starting_from_middle'
-    )
-    await fs.mkdir(path.join(root, 'folder_a', 'folder_b', 'folder_c'), {
-      recursive: true
-    })
-    await fs.writeFile(
-      path.join(root, 'file_under_root'),
-      'test file under root contents'
-    )
-    await fs.writeFile(
-      path.join(root, 'folder_a', 'file_under_a'),
-      'test file under a contents'
-    )
-    await fs.writeFile(
-      path.join(root, 'folder_a', 'folder_b', 'file_under_b'),
-      'test file under b contents'
-    )
-    await fs.writeFile(
-      path.join(root, 'folder_a', 'folder_b', 'folder_c', 'file_under_c'),
-      'test file under c contents'
-    )
-    await createSymlinkDir(
-      root,
-      path.join(root, 'folder_a', 'folder_b', 'folder_c', 'sym_folder')
-    )
-    await fs.stat(
-      path.join(
-        root,
-        'folder_a',
-        'folder_b',
-        'folder_c',
-        'sym_folder',
-        'file_under_root'
-      )
-    )
-
-    const itemPaths = await glob.glob(path.join(root, 'folder_a', 'folder_b'))
-    expect(itemPaths).toHaveLength(8)
-    expect(itemPaths[0]).toBe(path.join(root, 'folder_a', 'folder_b'))
-    expect(itemPaths[1]).toBe(
-      path.join(root, 'folder_a', 'folder_b', 'file_under_b')
-    )
-    expect(itemPaths[2]).toBe(
-      path.join(root, 'folder_a', 'folder_b', 'folder_c')
-    )
-    expect(itemPaths[3]).toBe(
-      path.join(root, 'folder_a', 'folder_b', 'folder_c', 'file_under_c')
-    )
-    expect(itemPaths[4]).toBe(
-      path.join(root, 'folder_a', 'folder_b', 'folder_c', 'sym_folder')
-    )
-    expect(itemPaths[5]).toBe(
-      path.join(
-        root,
-        'folder_a',
-        'folder_b',
-        'folder_c',
-        'sym_folder',
-        'file_under_root'
-      )
-    )
-    expect(itemPaths[6]).toBe(
-      path.join(
-        root,
-        'folder_a',
-        'folder_b',
-        'folder_c',
-        'sym_folder',
-        'folder_a'
-      )
-    )
-    expect(itemPaths[7]).toBe(
-      path.join(
-        root,
-        'folder_a',
-        'folder_b',
-        'folder_c',
-        'sym_folder',
-        'folder_a',
-        'file_under_a'
-      )
-    )
-    // todo: ? expect(itemPaths[8]).toBe(path.join(root, 'folder_a', 'folder_b', 'folder_c', 'sym_folder', 'folder_a', 'folder_b'));
-  })
-
-  // it('normalizes find path', (done: MochaDone) => {
-  //     this.timeout(1000);
-
-  //     // create the following layout:
-  //     //   <root>/hello/world.txt
-  //     let root: string = path.join(testutil.getTestTemp(), 'find_normalizes_separators');
-  //     tl.mkdirP(path.join(root, 'hello'));
-  //     fs.writeFileSync(path.join(root, 'hello', 'world.txt'), '');
-
-  //     let actual: string[] = tl.find(root + path.sep + path.sep + path.sep + 'nosuch' + path.sep + '..' + path.sep + 'hello');
-  //     let expected: string[] = [
-  //         path.join(root, 'hello'),
-  //         path.join(root, 'hello', 'world.txt'),
-  //     ];
-  //     assert.deepEqual(actual, expected);
-
-  //     done();
-  // });
 })
 
 async function createHiddenDirectory(dir: string): Promise<void> {

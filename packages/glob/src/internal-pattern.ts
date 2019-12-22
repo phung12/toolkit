@@ -22,14 +22,25 @@ export class Pattern {
   constructor(pattern: string)
   constructor(negate: boolean, segments: string[])
   constructor(patternOrNegate: string | boolean, segments?: string[]) {
-    // Pattern
+    // Pattern overload
     let pattern: string
     if (typeof patternOrNegate === 'string') {
       pattern = patternOrNegate
-    } else {
-      pattern = `${patternOrNegate ? '!' : ''}${new Path(
-        segments as string[]
-      ).toString()}`
+    }
+    // Segments overload
+    else {
+      // Convert to pattern
+      segments = segments || []
+      assert(segments.length, `Parameter 'segments' must not empty`)
+      const root = this.getLiteral(segments[0])
+      assert(
+        root && pathHelper.isRooted(root),
+        `Parameter 'segments' first element must be a root path`
+      )
+      pattern = new Path(segments).toString()
+      if (patternOrNegate) {
+        pattern = `!${pattern}`
+      }
     }
 
     // Negate

@@ -1,8 +1,6 @@
 import * as patternHelper from '../src/internal-pattern-helper'
 import {MatchKind} from '../src/internal-match-kind'
-
-// todo: add tests for getSearchPaths
-// todo: add tests for partialMatch
+import {IS_WINDOWS} from '../../io/src/io-util'
 
 describe('pattern-helper', () => {
   it('match supports interleaved exclude patterns', () => {
@@ -92,5 +90,72 @@ describe('pattern-helper', () => {
     )
     expect(patterns).toHaveLength(1)
     expect(patterns[0].segments.reverse()[0]).toEqual('hello-world.txt')
+  })
+
+  it('partialMatch skips negate patterns', () => {
+    const patterns = patternHelper.parse(
+      [
+        '/search1/foo/**',
+        '/search2/bar/**',
+        '!/search2/bar/**',
+        '!/search3/baz/**'
+      ],
+      patternHelper.getOptions({implicitDescendants: false})
+    )
+    expect(patternHelper.partialMatch(patterns, '/search1')).toBeTruthy()
+    expect(patternHelper.partialMatch(patterns, '/search1/foo')).toBeTruthy()
+    expect(patternHelper.partialMatch(patterns, '/search2')).toBeTruthy()
+    expect(patternHelper.partialMatch(patterns, '/search2/bar')).toBeTruthy()
+    expect(patternHelper.partialMatch(patterns, '/search3')).toBeFalsy()
+    expect(patternHelper.partialMatch(patterns, '/search3/bar')).toBeFalsy()
+  })
+
+  it('omits negate search paths', () => {
+    const patterns = patternHelper.parse(
+      ['/search1/foo/**', '/search2/bar/**', '!/search3/baz/**'],
+      patternHelper.getOptions()
+    )
+    const searchPaths = patternHelper.getSearchPaths(patterns)
+    expect(searchPaths).toEqual(['/search1/foo', '/search2/bar'])
+  })
+
+  it('omits search path when ancestor is also a search path', () => {
+    if (IS_WINDOWS) {
+      const patterns = patternHelper.parse(
+        [
+          '/Search1/Foo/**',
+          '/sEARCH1/fOO/bar/**',
+          '/sEARCH1/foo/bar',
+          '/Search2/**',
+          '/Search3/Foo/Bar/**',
+          '/sEARCH3/fOO/bAR/**'
+        ],
+        patternHelper.getOptions()
+      )
+      const searchPaths = patternHelper.getSearchPaths(patterns)
+      expect(searchPaths).toEqual([
+        '/Search1/Foo',
+        '/Search2',
+        '/Search3/Foo/Bar'
+      ])
+    } else {
+      const patterns = patternHelper.parse(
+        [
+          '/search1/foo/**',
+          '/search1/foo/bar/**',
+          '/search2/foo/bar',
+          '/search2/**',
+          '/search3/foo/bar/**',
+          '/search3/foo/bar/**'
+        ],
+        patternHelper.getOptions()
+      )
+      const searchPaths = patternHelper.getSearchPaths(patterns)
+      expect(searchPaths).toEqual([
+        '/search1/foo',
+        '/search2',
+        '/search3/foo/bar'
+      ])
+    }
   })
 })

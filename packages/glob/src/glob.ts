@@ -18,7 +18,7 @@ export async function glob(
   pattern: string,
   options?: IGlobOptions
 ): Promise<string[]> {
-  let result: string[] = []
+  const result: string[] = []
   for await (const itemPath of globGenerator(pattern, options)) {
     result.push(itemPath)
   }

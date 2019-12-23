@@ -4,66 +4,6 @@ import * as path from 'path'
 const IS_WINDOWS = process.platform === 'win32'
 
 /**
- * Roots the path if not already rooted
- */
-export function ensureRooted(root: string, p: string): string {
-  assert(root, `ensureRooted parameter 'root' must not be empty`)
-  assert(p, `ensureRooted parameter 'p' must not be empty`)
-
-  // Already rooted
-  if (isRooted(p)) {
-    return p
-  }
-
-  // On Windows, check for root like C:
-  if (IS_WINDOWS && root.match(/^[A-Z]:$/i)) {
-    return root + p
-  }
-
-  // Otherwise ensure root ends with a separator
-  if (root.endsWith('/') || (IS_WINDOWS && root.endsWith('\\'))) {
-    // Intentionally empty
-  } else {
-    // Append separator
-    root += path.sep
-  }
-
-  return root + p
-}
-
-/**
- * Normalizes the path and trims the trailing separator (when safe).
- * For example, `/foo/ => /foo` but `/ => /`
- */
-export function safeTrimTrailingSeparator(p: string): string {
-  // Short-circuit if empty
-  if (!p) {
-    return ''
-  }
-
-  // Normalize separators
-  p = normalizeSeparators(p)
-
-  // No trailing slash
-  if (!p.endsWith(path.sep)) {
-    return p
-  }
-
-  // Check '/' on Linux/macOS and '\' on Windows
-  if (p === path.sep) {
-    return p
-  }
-
-  // On Windows check if drive root. E.g. C:\
-  if (IS_WINDOWS && /^[A-Z]:\\$/i.test(p)) {
-    return p
-  }
-
-  // Otherwise trim trailing slash
-  return p.substr(0, p.length - 1)
-}
-
-/**
  * Similar to path.dirname except normalizes the path separators and slightly better handling for Windows UNC paths.
  *
  * For example, on Linux/macOS:
@@ -100,6 +40,34 @@ export function dirname(p: string): string {
   }
 
   return result
+}
+
+/**
+ * Roots the path if not already rooted
+ */
+export function ensureRooted(root: string, p: string): string {
+  assert(root, `ensureRooted parameter 'root' must not be empty`)
+  assert(p, `ensureRooted parameter 'p' must not be empty`)
+
+  // Already rooted
+  if (isRooted(p)) {
+    return p
+  }
+
+  // On Windows, check for root like C:
+  if (IS_WINDOWS && root.match(/^[A-Z]:$/i)) {
+    return root + p
+  }
+
+  // Otherwise ensure root ends with a separator
+  if (root.endsWith('/') || (IS_WINDOWS && root.endsWith('\\'))) {
+    // Intentionally empty
+  } else {
+    // Append separator
+    root += path.sep
+  }
+
+  return root + p
 }
 
 /**
@@ -141,4 +109,36 @@ export function normalizeSeparators(p: string): string {
 
   // Remove redundant slashes
   return p.replace(/\/\/+/g, '/')
+}
+
+/**
+ * Normalizes the path and trims the trailing separator (when safe).
+ * For example, `/foo/ => /foo` but `/ => /`
+ */
+export function safeTrimTrailingSeparator(p: string): string {
+  // Short-circuit if empty
+  if (!p) {
+    return ''
+  }
+
+  // Normalize separators
+  p = normalizeSeparators(p)
+
+  // No trailing slash
+  if (!p.endsWith(path.sep)) {
+    return p
+  }
+
+  // Check '/' on Linux/macOS and '\' on Windows
+  if (p === path.sep) {
+    return p
+  }
+
+  // On Windows check if drive root. E.g. C:\
+  if (IS_WINDOWS && /^[A-Z]:\\$/i.test(p)) {
+    return p
+  }
+
+  // Otherwise trim trailing slash
+  return p.substr(0, p.length - 1)
 }

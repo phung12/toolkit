@@ -1,3 +1,4 @@
+import * as path from 'path'
 import * as pathHelper from '../src/internal-path-helper'
 
 const IS_WINDOWS = process.platform === 'win32'
@@ -13,40 +14,28 @@ describe('path-helper', () => {
 
     if (IS_WINDOWS) {
       // Removes redundant slashes
-      assertDirectoryName('C:\\\\hello\\\\\\world\\\\', 'C:\\hello\\world')
-      assertDirectoryName('C://hello///world//', 'C:\\hello\\world')
+      assertDirectoryName('C:\\\\hello\\\\\\world\\\\', 'C:\\hello')
+      assertDirectoryName('C://hello///world//', 'C:\\hello')
       // Relative root:
-      assertDirectoryName(
-        '\\hello\\\\world\\\\again\\\\',
-        '\\hello\\world\\again'
-      )
-      assertDirectoryName('/hello///world//again//', '\\hello\\world\\again')
+      assertDirectoryName('\\hello\\\\world\\\\again\\\\', '\\hello\\world')
+      assertDirectoryName('/hello///world//again//', '\\hello\\world')
       // UNC:
-      assertDirectoryName(
-        '\\\\hello\\world\\again\\',
-        '\\\\hello\\world\\again'
-      )
+      assertDirectoryName('\\\\hello\\world\\again\\', '\\\\hello\\world')
       assertDirectoryName(
         '\\\\hello\\\\\\world\\\\again\\\\',
-        '\\\\hello\\world\\again'
+        '\\\\hello\\world'
       )
       assertDirectoryName(
         '\\\\\\hello\\\\\\world\\\\again\\\\',
-        '\\\\hello\\world\\again'
+        '\\\\hello\\world'
       )
       assertDirectoryName(
         '\\\\\\\\hello\\\\\\world\\\\again\\\\',
-        '\\\\hello\\world\\again'
+        '\\\\hello\\world'
       )
-      assertDirectoryName('//hello///world//again//', '\\\\hello\\world\\again')
-      assertDirectoryName(
-        '///hello///world//again//',
-        '\\\\hello\\world\\again'
-      )
-      assertDirectoryName(
-        '/////hello///world//again//',
-        '\\\\hello\\world\\again'
-      )
+      assertDirectoryName('//hello///world//again//', '\\\\hello\\world')
+      assertDirectoryName('///hello///world//again//', '\\\\hello\\world')
+      assertDirectoryName('/////hello///world//again//', '\\\\hello\\world')
       // Relative:
       assertDirectoryName('hello\\world', 'hello')
 
@@ -55,37 +44,37 @@ describe('path-helper', () => {
       assertDirectoryName('z:/hello', 'z:\\')
       assertDirectoryName('A:/hello', 'A:\\')
       assertDirectoryName('Z:/hello', 'Z:\\')
-      assertDirectoryName('C:/', '')
+      assertDirectoryName('C:/', 'C:\\')
       assertDirectoryName('C:/hello', 'C:\\')
-      assertDirectoryName('C:/hello/', 'C:\\hello')
+      assertDirectoryName('C:/hello/', 'C:\\')
       assertDirectoryName('C:/hello/world', 'C:\\hello')
-      assertDirectoryName('C:/hello/world/', 'C:\\hello\\world')
-      assertDirectoryName('C:', '')
+      assertDirectoryName('C:/hello/world/', 'C:\\hello')
+      assertDirectoryName('C:', 'C:')
       assertDirectoryName('C:hello', 'C:')
-      assertDirectoryName('C:hello/', 'C:hello')
+      assertDirectoryName('C:hello/', 'C:')
       assertDirectoryName('C:hello/world', 'C:hello')
-      assertDirectoryName('C:hello/world/', 'C:hello\\world')
-      assertDirectoryName('/', '')
+      assertDirectoryName('C:hello/world/', 'C:hello')
+      assertDirectoryName('/', '\\')
       assertDirectoryName('/hello', '\\')
-      assertDirectoryName('/hello/', '\\hello')
+      assertDirectoryName('/hello/', '\\')
       assertDirectoryName('/hello/world', '\\hello')
-      assertDirectoryName('/hello/world/', '\\hello\\world')
-      assertDirectoryName('\\', '')
+      assertDirectoryName('/hello/world/', '\\hello')
+      assertDirectoryName('\\', '\\')
       assertDirectoryName('\\hello', '\\')
-      assertDirectoryName('\\hello\\', '\\hello')
+      assertDirectoryName('\\hello\\', '\\')
       assertDirectoryName('\\hello\\world', '\\hello')
-      assertDirectoryName('\\hello\\world\\', '\\hello\\world')
-      assertDirectoryName('//hello', '')
-      assertDirectoryName('//hello/', '')
-      assertDirectoryName('//hello/world', '')
+      assertDirectoryName('\\hello\\world\\', '\\hello')
+      assertDirectoryName('//hello', '\\\\hello')
+      assertDirectoryName('//hello/', '\\\\hello')
+      assertDirectoryName('//hello/world', '\\\\hello\\world')
       assertDirectoryName('//hello/world/', '\\\\hello\\world')
-      assertDirectoryName('\\\\hello', '')
-      assertDirectoryName('\\\\hello\\', '')
-      assertDirectoryName('\\\\hello\\world', '')
+      assertDirectoryName('\\\\hello', '\\\\hello')
+      assertDirectoryName('\\\\hello\\', '\\\\hello')
+      assertDirectoryName('\\\\hello\\world', '\\\\hello\\world')
       assertDirectoryName('\\\\hello\\world\\', '\\\\hello\\world')
       assertDirectoryName('//hello/world/again', '\\\\hello\\world')
-      assertDirectoryName('//hello/world/again/', '\\\\hello\\world\\again')
-      assertDirectoryName('hello/world/', 'hello\\world')
+      assertDirectoryName('//hello/world/again/', '\\\\hello\\world')
+      assertDirectoryName('hello/world/', 'hello')
       assertDirectoryName('hello/world/again', 'hello\\world')
       assertDirectoryName('../../hello', '..\\..')
     } else {
@@ -136,6 +125,19 @@ describe('path-helper', () => {
   })
 
   it('ensureRooted roots paths', () => {
+    // Preserves relative pathing
+    assertEnsureRooted('/foo', '.', `${path.sep}foo${path.sep}.`)
+    assertEnsureRooted(
+      '/foo/..',
+      'bar',
+      `${path.sep}foo${path.sep}..${path.sep}bar`
+    )
+    assertEnsureRooted(
+      '/foo',
+      'bar/../baz',
+      `${path.sep}foo${path.sep}bar${path.sep}..${path.sep}baz`
+    )
+
     if (IS_WINDOWS) {
       // Already rooted - drive root
       assertEnsureRooted('D:\\', 'C:/', 'C:/')
@@ -294,11 +296,12 @@ describe('path-helper', () => {
     }
   })
 
-  it('normalizeSeparators', () => {
+  it('normalizeSeparators normalizes slashes', () => {
     if (IS_WINDOWS) {
       // Drive-rooted
       assertNormalizeSeparators('C:/', 'C:\\')
       assertNormalizeSeparators('C:/hello', 'C:\\hello')
+      assertNormalizeSeparators('C:/hello/', 'C:\\hello\\')
       assertNormalizeSeparators('C:\\', 'C:\\')
       assertNormalizeSeparators('C:\\hello', 'C:\\hello')
       assertNormalizeSeparators('C:', 'C:')
@@ -342,6 +345,7 @@ describe('path-helper', () => {
       assertNormalizeSeparators('/', '/')
       assertNormalizeSeparators('/hello', '/hello')
       assertNormalizeSeparators('/hello/world', '/hello/world')
+      assertNormalizeSeparators('//hello/world/', '/hello/world/')
 
       // Backslash not converted
       assertNormalizeSeparators('C:\\', 'C:\\')
@@ -362,6 +366,103 @@ describe('path-helper', () => {
       assertNormalizeSeparators('hello/////world', 'hello/world')
     }
   })
+
+  it('safeTrimTrailingSeparator safely trims trailing separator', () => {
+    assertSafeTrimTrailingSeparator('', '')
+
+    if (IS_WINDOWS) {
+      // Removes redundant slashes
+      assertSafeTrimTrailingSeparator(
+        'C:\\\\hello\\\\\\world\\\\',
+        'C:\\hello\\world'
+      )
+      assertSafeTrimTrailingSeparator('C://hello///world//', 'C:\\hello\\world')
+      // Relative root:
+      assertSafeTrimTrailingSeparator(
+        '\\hello\\\\world\\\\again\\\\',
+        '\\hello\\world\\again'
+      )
+      assertSafeTrimTrailingSeparator(
+        '/hello///world//again//',
+        '\\hello\\world\\again'
+      )
+      // UNC:
+      assertSafeTrimTrailingSeparator('\\\\hello\\world\\', '\\\\hello\\world')
+      assertSafeTrimTrailingSeparator(
+        '\\\\hello\\world\\\\',
+        '\\\\hello\\world'
+      )
+      assertSafeTrimTrailingSeparator(
+        '\\\\hello\\\\\\world\\\\again\\',
+        '\\\\hello\\world\\again'
+      )
+      assertSafeTrimTrailingSeparator('//hello/world/', '\\\\hello\\world')
+      assertSafeTrimTrailingSeparator('//hello/world//', '\\\\hello\\world')
+      assertSafeTrimTrailingSeparator(
+        '//hello//world//again/',
+        '\\\\hello\\world\\again'
+      )
+      // Relative:
+      assertSafeTrimTrailingSeparator('hello\\world\\', 'hello\\world')
+
+      // Slash trimming
+      assertSafeTrimTrailingSeparator('a:/hello/', 'a:\\hello')
+      assertSafeTrimTrailingSeparator('z:/hello', 'z:\\hello')
+      assertSafeTrimTrailingSeparator('C:/', 'C:\\')
+      assertSafeTrimTrailingSeparator('C:\\', 'C:\\')
+      assertSafeTrimTrailingSeparator('C:/hello/world', 'C:\\hello\\world')
+      assertSafeTrimTrailingSeparator('C:/hello/world/', 'C:\\hello\\world')
+      assertSafeTrimTrailingSeparator('C:', 'C:')
+      assertSafeTrimTrailingSeparator('C:hello/', 'C:hello')
+      assertSafeTrimTrailingSeparator('/', '\\')
+      assertSafeTrimTrailingSeparator('/hello/', '\\hello')
+      assertSafeTrimTrailingSeparator('\\', '\\')
+      assertSafeTrimTrailingSeparator('\\hello\\', '\\hello')
+      assertSafeTrimTrailingSeparator('//hello/', '\\\\hello')
+      assertSafeTrimTrailingSeparator('//hello/world', '\\\\hello\\world')
+      assertSafeTrimTrailingSeparator('//hello/world/', '\\\\hello\\world')
+      assertSafeTrimTrailingSeparator('\\\\hello', '\\\\hello')
+      assertSafeTrimTrailingSeparator('\\\\hello\\', '\\\\hello')
+      assertSafeTrimTrailingSeparator('\\\\hello\\world', '\\\\hello\\world')
+      assertSafeTrimTrailingSeparator('\\\\hello\\world\\', '\\\\hello\\world')
+      assertSafeTrimTrailingSeparator('hello/world/', 'hello/world')
+      assertSafeTrimTrailingSeparator('hello/', 'hello')
+      assertSafeTrimTrailingSeparator('../../', '..\\..')
+    } else {
+      // Should not converts slashes
+      assertSafeTrimTrailingSeparator('/hello\\world', '/hello\\world')
+      assertSafeTrimTrailingSeparator('/hello\\world/', '/hello\\world')
+      assertSafeTrimTrailingSeparator('\\\\hello\\world/', '\\\\hello\\world')
+      assertSafeTrimTrailingSeparator('hello\\world/', 'hello\\world')
+
+      // Should remove redundant slashes (rooted paths; UNC format not special)
+      assertSafeTrimTrailingSeparator('//hello', '/hello')
+      assertSafeTrimTrailingSeparator('//hello/world', '/hello/world')
+      assertSafeTrimTrailingSeparator('//hello/world/', '/hello/world')
+      assertSafeTrimTrailingSeparator('//hello//world//', '/hello/world')
+      assertSafeTrimTrailingSeparator('///hello////world///', '/hello/world')
+
+      // Should remove redundant slashes (relative paths)
+      assertSafeTrimTrailingSeparator('hello//world//', 'hello/world')
+      assertSafeTrimTrailingSeparator('hello///world///', 'hello/world')
+
+      // Slash trimming (Windows drive root format not special)
+      assertSafeTrimTrailingSeparator('C:/', 'C:')
+      assertSafeTrimTrailingSeparator('C:/hello', 'C:/hello')
+      assertSafeTrimTrailingSeparator('C:/hello/', 'C:/hello')
+      assertSafeTrimTrailingSeparator('C:hello/', 'C:hello')
+
+      // Slash trimming (rooted paths)
+      assertSafeTrimTrailingSeparator('/', '/')
+      assertSafeTrimTrailingSeparator('/hello', '/hello')
+      assertSafeTrimTrailingSeparator('/hello/', '/hello')
+      assertSafeTrimTrailingSeparator('/hello/world/', '/hello/world')
+
+      // Slash trimming (relative paths)
+      assertSafeTrimTrailingSeparator('hello/world/', 'hello/world')
+      assertSafeTrimTrailingSeparator('../../', '../..')
+    }
+  })
 })
 
 function assertDirectoryName(itemPath: string, expected: string): void {
@@ -376,10 +477,17 @@ function assertEnsureRooted(
   expect(pathHelper.ensureRooted(root, itemPath)).toBe(expected)
 }
 
-function assertIsRooted(path: string, expected: boolean): void {
-  expect(pathHelper.isRooted(path)).toBe(expected)
+function assertIsRooted(itemPath: string, expected: boolean): void {
+  expect(pathHelper.isRooted(itemPath)).toBe(expected)
 }
 
-function assertNormalizeSeparators(path: string, expected: string): void {
-  expect(pathHelper.normalizeSeparators(path)).toBe(expected)
+function assertNormalizeSeparators(itemPath: string, expected: string): void {
+  expect(pathHelper.normalizeSeparators(itemPath)).toBe(expected)
+}
+
+function assertSafeTrimTrailingSeparator(
+  itemPath: string,
+  expected: string
+): void {
+  expect(pathHelper.safeTrimTrailingSeparator(itemPath)).toBe(expected)
 }

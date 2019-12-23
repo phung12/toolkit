@@ -1,5 +1,8 @@
 import * as patternHelper from '../src/internal-pattern-helper'
 
+// todo: add tests for getSearchPaths
+// todo: add tests for match bitwise behavior
+
 describe('pattern-helper', () => {
   it('match supports interleaved exclude patterns', () => {
     const itemPaths = [

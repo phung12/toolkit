@@ -18,6 +18,17 @@ export async function glob(
   pattern: string,
   options?: IGlobOptions
 ): Promise<string[]> {
+  let result: string[] = []
+  for await (const itemPath of globGenerator(pattern, options)) {
+    result.push(itemPath)
+  }
+  return result
+}
+
+export async function* globGenerator(
+  pattern: string,
+  options?: IGlobOptions
+): AsyncGenerator<string, void> {
   // Set defaults options
   options = patternHelper.getOptions(options)
 
@@ -40,8 +51,6 @@ export async function glob(
 
     stack.unshift(new SearchState(searchPath, 1))
   }
-
-  const result: string[] = []
 
   // Search
   const traversalChain: string[] = [] // used to detect cycles
@@ -71,7 +80,7 @@ export async function glob(
     if (stats.isDirectory()) {
       // Matched
       if (match & MatchKind.Directory) {
-        result.push(item.path)
+        yield item.path
       }
       // Descend?
       else if (!patternHelper.partialMatch(patterns, item.path)) {
@@ -87,11 +96,9 @@ export async function glob(
     }
     // File
     else if (match & MatchKind.File) {
-      result.push(item.path)
+      yield item.path
     }
   }
-
-  return result
 }
 
 /**

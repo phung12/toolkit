@@ -2,6 +2,7 @@ import * as patternHelper from '../src/internal-pattern-helper'
 import {MatchKind} from '../src/internal-match-kind'
 
 // todo: add tests for getSearchPaths
+// todo: add tests for partialMatch
 
 describe('pattern-helper', () => {
   it('match supports interleaved exclude patterns', () => {

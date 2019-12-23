@@ -4,6 +4,8 @@ import {MatchKind} from '../src/internal-match-kind'
 import {Pattern} from '../src/internal-pattern'
 import {promises as fs} from 'fs'
 
+const IS_WINDOWS = process.platform === 'win32'
+
 describe('pattern', () => {
   it('counts leading negate markers', () => {
     const actual = [
@@ -14,6 +16,43 @@ describe('pattern', () => {
       '!!!/initial-includes/three-negate-markers.txt'
     ].map(x => new Pattern(x).negate)
     expect(actual).toEqual([false, false, false, true, true])
+  })
+
+  it('is case insensitive match on Windows', () => {
+    const pattern = new Pattern('/Foo/**/Baz')
+    expect(pattern.match('/Foo/Baz')).toBe(MatchKind.All)
+    expect(pattern.match('/Foo/bAZ')).toBe(
+      IS_WINDOWS ? MatchKind.All : MatchKind.None
+    )
+    expect(pattern.match('/fOO/Baz')).toBe(
+      IS_WINDOWS ? MatchKind.All : MatchKind.None
+    )
+    expect(pattern.match('/fOO/bar/bAZ')).toBe(
+      IS_WINDOWS ? MatchKind.All : MatchKind.None
+    )
+  })
+
+  it('is case insensitive partial match on Windows', () => {
+    const pattern = new Pattern('/Foo/Bar/**/Baz')
+    expect(pattern.partialMatch('/Foo')).toBeTruthy()
+    expect(pattern.partialMatch('/fOO')).toBe(IS_WINDOWS ? true : false)
+  })
+
+  it('matches root', () => {
+    const pattern = new Pattern(IS_WINDOWS ? 'C:\\**' : '/**')
+    expect(pattern.match(IS_WINDOWS ? 'C:\\' : '/')).toBe(MatchKind.All)
+  })
+
+  it('partial matches root', () => {
+    if (IS_WINDOWS) {
+      let pattern = new Pattern('C:\\foo\\**')
+      expect(pattern.partialMatch('c:\\')).toBeTruthy()
+      pattern = new Pattern('c:\\foo\\**')
+      expect(pattern.partialMatch('C:\\')).toBeTruthy()
+    } else {
+      const pattern = new Pattern('/foo/**')
+      expect(pattern.partialMatch('/')).toBeTruthy()
+    }
   })
 
   it('replaces leading . segment', () => {

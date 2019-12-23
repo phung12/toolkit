@@ -25,19 +25,19 @@ export class Pattern {
     // Pattern overload
     let pattern: string
     if (typeof patternOrNegate === 'string') {
-      pattern = patternOrNegate
+      pattern = patternOrNegate.trim()
     }
     // Segments overload
     else {
       // Convert to pattern
       segments = segments || []
       assert(segments.length, `Parameter 'segments' must not empty`)
-      const root = this.getLiteral(segments[0])
+      const root = Pattern.getLiteral(segments[0])
       assert(
         root && pathHelper.isRooted(root),
         `Parameter 'segments' first element must be a root path`
       )
-      pattern = new Path(segments).toString()
+      pattern = new Path(segments).toString().trim()
       if (patternOrNegate) {
         pattern = `!${pattern}`
       }
@@ -46,11 +46,11 @@ export class Pattern {
     // Negate
     while (pattern.startsWith('!')) {
       this.negate = !this.negate
-      pattern = pattern.substr(1)
+      pattern = pattern.substr(1).trim()
     }
 
     // Normalize slashes and ensure rooted
-    pattern = this.fixupPattern(pattern)
+    pattern = Pattern.fixupPattern(pattern)
 
     // Segments
     this.segments = new Path(pattern).segments
@@ -64,13 +64,13 @@ export class Pattern {
     // Search path (literal path prior to the first glob segment)
     let foundGlob = false
     const searchSegments = this.segments
-      .map(x => this.getLiteral(x))
+      .map(x => Pattern.getLiteral(x))
       .filter(x => !foundGlob && !(foundGlob = x === ''))
     this.searchPath = new Path(searchSegments).toString()
 
     // Root RegExp (required when determining partial match)
     this.rootRegExp = new RegExp(
-      this.regExpEscape(searchSegments[0]),
+      Pattern.regExpEscape(searchSegments[0]),
       IS_WINDOWS ? 'i' : ''
     )
 
@@ -114,19 +114,26 @@ export class Pattern {
     )
   }
 
-  // static create(negate: boolean, segments: string[]): Pattern {
-  // }
+  /**
+   * Escapes glob patterns within a path
+   */
+  static globEscape(s: string): string {
+    return (IS_WINDOWS ? s : s.replace(/\\/g, '\\\\')) // escape '\' on Linux/macOS
+      .replace(/(\[)(?=[^/]+\])/g, '[[]') // escape '[' when ']' follows within the path segment
+      .replace(/\?/g, '[?]') // escape '?'
+      .replace(/\*/g, '[*]') // escape '*'
+  }
 
   /**
    * Normalizes slashes and ensures rooted
    */
-  private fixupPattern(pattern: string): string {
+  private static fixupPattern(pattern: string): string {
     // Empty
     assert(pattern, 'pattern cannot be empty')
 
     // Must not use C: and C:foo format on Windows (for simplicity)
     const literalSegments = new Path(pattern).segments.map(x =>
-      this.getLiteral(x)
+      Pattern.getLiteral(x)
     )
     assert(
       !IS_WINDOWS || !/^[A-Z]:$/i.test(literalSegments[0]),
@@ -151,12 +158,15 @@ export class Pattern {
 
     // Replace leading `.` segment
     if (pattern === '.' || pattern.startsWith(`.${path.sep}`)) {
-      pattern = this.globEscape(process.cwd()) + pattern.substr(1)
+      pattern = Pattern.globEscape(process.cwd()) + pattern.substr(1)
       pattern = pathHelper.normalizeSeparators(pattern)
     }
     // Otherwise ensure rooted
     else if (!pathHelper.isRooted(pattern)) {
-      pattern = pathHelper.ensureRooted(this.globEscape(process.cwd()), pattern)
+      pattern = pathHelper.ensureRooted(
+        Pattern.globEscape(process.cwd()),
+        pattern
+      )
     }
 
     return pattern
@@ -166,7 +176,7 @@ export class Pattern {
    * Attempts to unescape a pattern segment to create a literal path segment.
    * Otherwise returns empty string.
    */
-  private getLiteral(segment: string): string {
+  private static getLiteral(segment: string): string {
     let literal = ''
     for (let i = 0; i < segment.length; i++) {
       const c = segment[i]
@@ -225,20 +235,10 @@ export class Pattern {
   }
 
   /**
-   * Escapes glob patterns within a path
-   */
-  private globEscape(s: string): string {
-    return (IS_WINDOWS ? s : s.replace(/\\/g, '\\\\')) // escape '\' on Linux/macOS
-      .replace(/(\[)(?=[^/]+\])/g, '[[]') // escape '[' when ']' follows within the path segment
-      .replace(/\?/g, '[?]') // escape '?'
-      .replace(/\*/g, '[*]') // escape '*'
-  }
-
-  /**
    * Escapes regexp special characters
    * https://javascript.info/regexp-escaping
    */
-  private regExpEscape(s: string): string {
+  private static regExpEscape(s: string): string {
     return s.replace(/[[\\^$.|?*+()]/g, '\\$&')
   }
 }

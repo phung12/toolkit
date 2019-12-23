@@ -80,9 +80,9 @@ export function match(patterns: Pattern[], itemPath: string): MatchKind {
 export function parse(patterns: string[], options: IGlobOptions): Pattern[] {
   const result: Pattern[] = []
 
-  for (const patternString of patterns) {
-    // Comment
-    if (patternString.startsWith('#')) {
+  for (const patternString of patterns.map(x => x.trim())) {
+    // Skip empty or comment
+    if (!patternString || patternString.startsWith('#')) {
       continue
     }
 

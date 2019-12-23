@@ -6,7 +6,7 @@ import {promises as fs} from 'fs'
 
 const IS_WINDOWS = process.platform === 'win32'
 
-// todo add more tests from old lib internalhelpertests, matchtests, and findmatchtests
+// todo add more tests from old lib findmatchtests
 
 /**
  * These test focus on the ability of glob to find files

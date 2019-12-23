@@ -1,8 +1,8 @@
+import * as os from 'os'
 import * as path from 'path'
+import {MatchKind} from '../src/internal-match-kind'
 import {Pattern} from '../src/internal-pattern'
-
-// todo: replace leading .
-// todo: replace leading ~
+import {promises as fs} from 'fs'
 
 describe('pattern', () => {
   it('counts leading negate markers', () => {
@@ -14,6 +14,46 @@ describe('pattern', () => {
       '!!!/initial-includes/three-negate-markers.txt'
     ].map(x => new Pattern(x).negate)
     expect(actual).toEqual([false, false, false, true, true])
+  })
+
+  it('replaces leading . segment', () => {
+    // Pattern is '.'
+    let pattern = new Pattern('.')
+    expect(pattern.match(process.cwd())).toBe(MatchKind.All)
+    expect(pattern.match(path.join(process.cwd(), 'foo'))).toBe(MatchKind.None)
+
+    // Pattern is './foo'
+    pattern = new Pattern('./foo')
+    expect(pattern.match(path.join(process.cwd(), 'foo'))).toBe(MatchKind.All)
+    expect(pattern.match(path.join(process.cwd(), 'bar'))).toBe(MatchKind.None)
+
+    // Pattern is '.foo'
+    pattern = new Pattern('.foo')
+    expect(pattern.match(path.join(process.cwd(), '.foo'))).toBe(MatchKind.All)
+    expect(pattern.match(path.join(process.cwd(), 'foo'))).toBe(MatchKind.None)
+    expect(pattern.match(`${process.cwd()}foo`)).toBe(MatchKind.None)
+  })
+
+  it('replaces leading ~ segment', async () => {
+    const homedir = os.homedir()
+    expect(homedir).toBeTruthy()
+    await fs.stat(homedir)
+
+    // Pattern is '~'
+    let pattern = new Pattern('~')
+    expect(pattern.match(homedir)).toBe(MatchKind.All)
+    expect(pattern.match(path.join(homedir, 'foo'))).toBe(MatchKind.None)
+
+    // Pattern is '~/foo'
+    pattern = new Pattern('~/foo')
+    expect(pattern.match(path.join(homedir, 'foo'))).toBe(MatchKind.All)
+    expect(pattern.match(path.join(homedir, 'bar'))).toBe(MatchKind.None)
+
+    // Pattern is '~foo'
+    pattern = new Pattern('~foo')
+    expect(pattern.match(path.join(process.cwd(), '~foo'))).toBe(MatchKind.All)
+    expect(pattern.match(path.join(homedir, 'foo'))).toBe(MatchKind.None)
+    expect(pattern.match(`${homedir}foo`)).toBe(MatchKind.None)
   })
 
   it('roots exclude pattern', () => {

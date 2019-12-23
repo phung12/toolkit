@@ -91,6 +91,25 @@ export class Pattern {
    * Matches the pattern against the specified path
    */
   match(itemPath: string): MatchKind {
+    // Last segment is globstar?
+    if (this.segments[this.segments.length - 1] === '**') {
+      // Normalize slashes
+      itemPath = pathHelper.normalizeSeparators(itemPath)
+
+      // Append a trailing slash. Otherwise Minimatch will not match the directory immediately
+      // preceeding the globstar. For example, given the pattern `/foo/**`, Minimatch returns
+      // false for `/foo` but returns true for `/foo/`. Append a trailing slash to handle that quirk.
+      if (!itemPath.endsWith(path.sep)) {
+        // Note, this is safe because the constructor does not allow pattern
+        // formats like C: and C:foo on Windows (for simplicity)
+        itemPath = `${itemPath}${path.sep}`
+      }
+    } else {
+      // Normalize slashes and trim unnecessary trailing slash
+      itemPath = pathHelper.safeTrimTrailingSeparator(itemPath)
+    }
+
+    // Match
     if (this.minimatch.match(itemPath)) {
       return this.trailingSlash ? MatchKind.Directory : MatchKind.All
     }
@@ -102,6 +121,9 @@ export class Pattern {
    * Indicates whether the pattern may match descendants of the specified path
    */
   partialMatch(itemPath: string): boolean {
+    // Normalize slashes and trim unnecessary trailing slash
+    itemPath = pathHelper.safeTrimTrailingSeparator(itemPath)
+
     // matchOne does not handle root path correctly
     if (pathHelper.dirname(itemPath) === itemPath) {
       return this.rootRegExp.test(itemPath)

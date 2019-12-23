@@ -19,7 +19,7 @@ export async function glob(
   options?: IGlobOptions
 ): Promise<string[]> {
   // Set defaults options
-  options = getOptions(options)
+  options = patternHelper.getOptions(options)
 
   // Parse patterns
   const patterns: Pattern[] = patternHelper.parse([pattern], options)
@@ -100,7 +100,10 @@ export async function glob(
  * For example, '/foo/bar*' returns '/foo'.
  */
 export function getSearchPath(pattern: string): string {
-  const patterns: Pattern[] = patternHelper.parse([pattern], getOptions())
+  const patterns: Pattern[] = patternHelper.parse(
+    [pattern],
+    patternHelper.getOptions()
+  )
   const searchPaths: string[] = patternHelper.getSearchPaths(patterns)
   return searchPaths.length > 0 ? searchPaths[0] : ''
 }
@@ -164,31 +167,4 @@ async function stat(
   }
 
   return stats
-}
-
-function getOptions(copy?: IGlobOptions): IGlobOptions {
-  const result: IGlobOptions = {
-    followSymbolicLinks: true,
-    implicitDescendants: true,
-    omitBrokenSymbolicLinks: true
-  }
-
-  if (copy) {
-    if (typeof copy.followSymbolicLinks === 'boolean') {
-      result.followSymbolicLinks = copy.followSymbolicLinks
-      core.debug(`followSymbolicLinks '${result.followSymbolicLinks}'`)
-    }
-
-    if (typeof copy.implicitDescendants === 'boolean') {
-      result.implicitDescendants = copy.implicitDescendants
-      core.debug(`implicitDescendants '${result.implicitDescendants}'`)
-    }
-
-    if (typeof copy.omitBrokenSymbolicLinks === 'boolean') {
-      result.omitBrokenSymbolicLinks = copy.omitBrokenSymbolicLinks
-      core.debug(`omitBrokenSymbolicLinks '${result.omitBrokenSymbolicLinks}'`)
-    }
-  }
-
-  return result
 }

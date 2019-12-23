@@ -1,7 +1,7 @@
 import * as patternHelper from '../src/internal-pattern-helper'
+import {MatchKind} from '../src/internal-match-kind'
 
 // todo: add tests for getSearchPaths
-// todo: add tests for match bitwise behavior
 
 describe('pattern-helper', () => {
   it('match supports interleaved exclude patterns', () => {
@@ -25,9 +25,11 @@ describe('pattern-helper', () => {
         '/**/*.sln', // include all sln files
         '!/**/proj2/README.txt' // exclude proj2 README files
       ],
-      {}
+      patternHelper.getOptions({implicitDescendants: false})
     )
-    const matched = itemPaths.filter(x => patternHelper.match(patterns, x))
+    const matched = itemPaths.filter(
+      x => patternHelper.match(patterns, x) === MatchKind.All
+    )
     expect(matched).toEqual([
       '/solution1/proj1/proj1.proj',
       '/solution1/proj1/README.txt',
@@ -37,10 +39,45 @@ describe('pattern-helper', () => {
     ])
   })
 
+  it('match supports excluding directories', () => {
+    const itemPaths = ['/', '/foo', '/foo/bar', '/foo/bar/baz']
+    const patterns = patternHelper.parse(
+      [
+        '/foo/**', // include all files and directories
+        '!/foo/**/' // exclude directories
+      ],
+      patternHelper.getOptions({implicitDescendants: false})
+    )
+    const matchKinds = itemPaths.map(x => patternHelper.match(patterns, x))
+    expect(matchKinds).toEqual([
+      MatchKind.None,
+      MatchKind.File,
+      MatchKind.File,
+      MatchKind.File
+    ])
+  })
+
+  it('match supports including directories only', () => {
+    const itemPaths = ['/', '/foo/', '/foo/bar', '/foo/bar/baz']
+    const patterns = patternHelper.parse(
+      [
+        '/foo/**/' // include directories only
+      ],
+      patternHelper.getOptions({implicitDescendants: false})
+    )
+    const matchKinds = itemPaths.map(x => patternHelper.match(patterns, x))
+    expect(matchKinds).toEqual([
+      MatchKind.None,
+      MatchKind.Directory,
+      MatchKind.Directory,
+      MatchKind.Directory
+    ])
+  })
+
   it('parse skips comments', () => {
     const patterns = patternHelper.parse(
       ['# comment 1', ' # comment 2', '!#hello-world.txt'],
-      {}
+      patternHelper.getOptions({implicitDescendants: false})
     )
     expect(patterns).toHaveLength(1)
     expect(patterns[0].negate).toBeTruthy()
@@ -48,7 +85,10 @@ describe('pattern-helper', () => {
   })
 
   it('parse skips empty patterns', () => {
-    const patterns = patternHelper.parse(['', ' ', 'hello-world.txt'], {})
+    const patterns = patternHelper.parse(
+      ['', ' ', 'hello-world.txt'],
+      patternHelper.getOptions({implicitDescendants: false})
+    )
     expect(patterns).toHaveLength(1)
     expect(patterns[0].segments.reverse()[0]).toEqual('hello-world.txt')
   })

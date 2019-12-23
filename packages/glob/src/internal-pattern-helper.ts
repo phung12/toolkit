@@ -1,9 +1,40 @@
+import * as core from '@actions/core'
 import * as pathHelper from './internal-path-helper'
 import {IGlobOptions} from './internal-glob-options'
 import {MatchKind} from './internal-match-kind'
 import {Pattern} from './internal-pattern'
 
 const IS_WINDOWS = process.platform === 'win32'
+
+/**
+ * Returns a copy with defaults filled in
+ */
+export function getOptions(copy?: IGlobOptions): IGlobOptions {
+  const result: IGlobOptions = {
+    followSymbolicLinks: true,
+    implicitDescendants: true,
+    omitBrokenSymbolicLinks: true
+  }
+
+  if (copy) {
+    if (typeof copy.followSymbolicLinks === 'boolean') {
+      result.followSymbolicLinks = copy.followSymbolicLinks
+      core.debug(`followSymbolicLinks '${result.followSymbolicLinks}'`)
+    }
+
+    if (typeof copy.implicitDescendants === 'boolean') {
+      result.implicitDescendants = copy.implicitDescendants
+      core.debug(`implicitDescendants '${result.implicitDescendants}'`)
+    }
+
+    if (typeof copy.omitBrokenSymbolicLinks === 'boolean') {
+      result.omitBrokenSymbolicLinks = copy.omitBrokenSymbolicLinks
+      core.debug(`omitBrokenSymbolicLinks '${result.omitBrokenSymbolicLinks}'`)
+    }
+  }
+
+  return result
+}
 
 /**
  * Given an array of patterns, returns an array of paths to search.

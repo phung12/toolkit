@@ -19,9 +19,7 @@ export class Path {
     if (typeof itemPath === 'string') {
       assert(itemPath, `Parameter 'itemPath' must not be empty`)
 
-      // Normalize slashes
-      // Trim trailing slash
-      itemPath = pathHelper.normalizeSeparators(itemPath)
+      // Normalize slashes and trim unnecessary trailing slash
       itemPath = pathHelper.safeTrimTrailingSeparator(itemPath)
 
       // Not rooted
@@ -70,7 +68,12 @@ export class Path {
 
         // Root segment
         if (i === 0 && pathHelper.isRooted(segment)) {
-          this.segments.push(pathHelper.safeTrimTrailingSeparator(segment))
+          segment = pathHelper.safeTrimTrailingSeparator(segment)
+          assert(
+            segment === pathHelper.dirname(segment),
+            `Parameter 'itemPath' root segment contains information for multiple segments`
+          )
+          this.segments.push(segment)
         }
         // All other segments
         else {

@@ -21,9 +21,7 @@ const IS_WINDOWS = process.platform === 'win32'
  * - `\\hello\world   => \\hello\world`
  */
 export function dirname(p: string): string {
-  // Normalize separators
-  // Trim unnecessary trailing slash
-  p = normalizeSeparators(p)
+  // Normalize slashes and trim unnecessary trailing slash
   p = safeTrimTrailingSeparator(p)
 
   // Windows UNC root, e.g. \\hello or \\hello\world
@@ -112,7 +110,7 @@ export function normalizeSeparators(p: string): string {
 }
 
 /**
- * Normalizes the path and trims the trailing separator (when safe).
+ * Normalizes the path separators and trims the trailing separator (when safe).
  * For example, `/foo/ => /foo` but `/ => /`
  */
 export function safeTrimTrailingSeparator(p: string): string {

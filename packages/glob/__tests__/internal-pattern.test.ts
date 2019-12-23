@@ -1,6 +1,9 @@
 import * as path from 'path'
 import {Pattern} from '../src/internal-pattern'
 
+// todo: replace leading .
+// todo: replace leading ~
+
 describe('pattern', () => {
   it('counts leading negate markers', () => {
     const actual = [

@@ -1,4 +1,5 @@
 import * as assert from 'assert'
+import * as os from 'os'
 import * as path from 'path'
 import * as pathHelper from './internal-path-helper'
 import {Minimatch, IMinimatch, IOptions as IMinimatchOptions} from 'minimatch'
@@ -181,6 +182,17 @@ export class Pattern {
     // Replace leading `.` segment
     if (pattern === '.' || pattern.startsWith(`.${path.sep}`)) {
       pattern = Pattern.globEscape(process.cwd()) + pattern.substr(1)
+      pattern = pathHelper.normalizeSeparators(pattern)
+    }
+    // Replace leading `~` segment
+    else if (pattern === '~' || pattern.startsWith(`~${path.sep}`)) {
+      const homedir = os.homedir()
+      assert(homedir, 'Unable to determine HOME directory')
+      assert(
+        pathHelper.isRooted(homedir),
+        `Expected HOME directory to be a rooted path. Actual '${homedir}'`
+      )
+      pattern = Pattern.globEscape(homedir) + pattern.substr(1)
       pattern = pathHelper.normalizeSeparators(pattern)
     }
     // Otherwise ensure rooted

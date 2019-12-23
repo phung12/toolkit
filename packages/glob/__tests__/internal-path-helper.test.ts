@@ -126,17 +126,9 @@ describe('path-helper', () => {
 
   it('ensureRooted roots paths', () => {
     // Preserves relative pathing
-    assertEnsureRooted('/foo', '.', `${path.sep}foo${path.sep}.`)
-    assertEnsureRooted(
-      '/foo/..',
-      'bar',
-      `${path.sep}foo${path.sep}..${path.sep}bar`
-    )
-    assertEnsureRooted(
-      '/foo',
-      'bar/../baz',
-      `${path.sep}foo${path.sep}bar${path.sep}..${path.sep}baz`
-    )
+    assertEnsureRooted('/foo', '.', `/foo${path.sep}.`)
+    assertEnsureRooted('/foo/..', 'bar', `/foo/..${path.sep}bar`)
+    assertEnsureRooted('/foo', 'bar/../baz', `/foo${path.sep}bar/../baz`)
 
     if (IS_WINDOWS) {
       // Already rooted - drive root
@@ -425,7 +417,7 @@ describe('path-helper', () => {
       assertSafeTrimTrailingSeparator('\\\\hello\\', '\\\\hello')
       assertSafeTrimTrailingSeparator('\\\\hello\\world', '\\\\hello\\world')
       assertSafeTrimTrailingSeparator('\\\\hello\\world\\', '\\\\hello\\world')
-      assertSafeTrimTrailingSeparator('hello/world/', 'hello/world')
+      assertSafeTrimTrailingSeparator('hello/world/', 'hello\\world')
       assertSafeTrimTrailingSeparator('hello/', 'hello')
       assertSafeTrimTrailingSeparator('../../', '..\\..')
     } else {

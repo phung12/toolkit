@@ -131,7 +131,7 @@ export class Pattern {
     }
 
     return this.minimatch.matchOne(
-      itemPath.split(/\/+/),
+      itemPath.split(IS_WINDOWS ? /\\+/ : /\/+/),
       this.minimatch.set[0],
       true
     )

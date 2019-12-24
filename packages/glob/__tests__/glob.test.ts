@@ -7,7 +7,6 @@ import {promises as fs} from 'fs'
 const IS_WINDOWS = process.platform === 'win32'
 
 // todo add more tests from old lib findmatchtests
-// todo add tests that confirm partial match works (e.g. avoids broken symlinks)
 
 /**
  * These test focus on the ability of glob to find files
@@ -232,6 +231,92 @@ describe('glob', () => {
 
     const itemPaths = await glob.glob(brokenSymPath)
     expect(itemPaths).toEqual([])
+  })
+
+  it('does not search paths that are not partial matches', async () => {
+    // Create the following layout:
+    //   <root>
+    //   <root>/realDir
+    //   <root>/realDir/nested
+    //   <root>/realDir/nested/file
+    //   <root>/realDir2
+    //   <root>/realDir2/nested2
+    //   <root>/realDir2/nested2/symDir -> <root>/noSuch
+    const root = path.join(
+      getTestTemp(),
+      'glob-does-not-search-paths-that-are-not-partial-matches'
+    )
+    await fs.mkdir(path.join(root, 'realDir', 'nested'), {recursive: true})
+    await fs.writeFile(
+      path.join(root, 'realDir', 'nested', 'file'),
+      'test file content'
+    )
+    await fs.mkdir(path.join(root, 'realDir2', 'nested2'), {recursive: true})
+    await createSymlinkDir(
+      path.join(root, 'noSuch'),
+      path.join(root, 'realDir2', 'nested2', 'symDir')
+    )
+
+    const options: glob.IGlobOptions = {
+      followSymbolicLinks: true,
+      omitBrokenSymbolicLinks: false
+    }
+
+    // Should throw
+    try {
+      await glob.glob(`${root}/*Dir*/*nested*/*`, options)
+      throw new Error('should not reach here')
+    } catch (err) {
+      expect(err.message).toMatch(/broken symbolic link/i)
+    }
+
+    // Not partial match
+    let itemPaths = await glob.glob(`${root}/*Dir/*nested*/*`, options)
+    expect(itemPaths).toEqual([path.join(root, 'realDir', 'nested', 'file')])
+
+    // Not partial match
+    itemPaths = await glob.glob(`${root}/*Dir*/*nested/*`, options)
+    expect(itemPaths).toEqual([path.join(root, 'realDir', 'nested', 'file')])
+  })
+
+  it('does not throw for broken symlinks that are not matches or partial matches', async () => {
+    // Create the following layout:
+    //   <root>
+    //   <root>/realDir
+    //   <root>/realDir/file
+    //   <root>/symDir -> <root>/noSuch
+    const root = path.join(
+      getTestTemp(),
+      'glob-does-not-throw-for-broken-symlinks-that-are-not-matches-or-partial-matches'
+    )
+    await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
+    await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
+    await createSymlinkDir(path.join(root, 'noSuch'), path.join(root, 'symDir'))
+
+    const options: glob.IGlobOptions = {
+      followSymbolicLinks: true,
+      omitBrokenSymbolicLinks: false
+    }
+
+    // Match should throw
+    try {
+      await glob.glob(`${root}/*`, options)
+      throw new Error('should not reach here')
+    } catch (err) {
+      expect(err.message).toMatch(/broken symbolic link/i)
+    }
+
+    // Partial match should throw
+    try {
+      await glob.glob(`${root}/*/*`, options)
+      throw new Error('should not reach here')
+    } catch (err) {
+      expect(err.message).toMatch(/broken symbolic link/i)
+    }
+
+    // Not match or partial match
+    const itemPaths = await glob.glob(`${root}/*eal*/*`, options)
+    expect(itemPaths).toEqual([path.join(root, 'realDir', 'file')])
   })
 
   it('follows symlink', async () => {

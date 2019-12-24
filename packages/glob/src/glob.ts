@@ -58,9 +58,11 @@ export async function* globGenerator(
     // Pop
     const item = stack.pop() as SearchState
 
-    // Match
+    // Match?
     const match = patternHelper.match(patterns, item.path)
-    if (!match) {
+    const partialMatch =
+      !!match || patternHelper.partialMatch(patterns, item.path)
+    if (!match && !partialMatch) {
       continue
     }
 
@@ -83,7 +85,7 @@ export async function* globGenerator(
         yield item.path
       }
       // Descend?
-      else if (!patternHelper.partialMatch(patterns, item.path)) {
+      else if (!partialMatch) {
         continue
       }
 

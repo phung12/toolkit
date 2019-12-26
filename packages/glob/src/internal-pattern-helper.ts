@@ -124,7 +124,7 @@ export function parse(patterns: string[], options: IGlobOptions): Pattern[] {
     // Implicit descendants?
     if (
       options.implicitDescendants &&
-      (pattern.trailingSlash ||
+      (pattern.trailingSeparator ||
         pattern.segments[pattern.segments.length - 1] !== '**')
     ) {
       // Push

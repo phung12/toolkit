@@ -11,7 +11,6 @@ const IS_WINDOWS = process.platform === 'win32'
 // todo search path unescapes as much as possible
 // todo search path is always rooted
 // todo supports backslash escape on linux/mac
-// todo test trailing slash
 
 describe('pattern', () => {
   it('counts leading negate markers', () => {
@@ -23,6 +22,19 @@ describe('pattern', () => {
       '!!!/initial-includes/three-negate-markers.txt'
     ].map(x => new Pattern(x).negate)
     expect(actual).toEqual([false, false, false, true, true])
+  })
+
+  it('globstar matches immediately preceeding directory', () => {
+    const pattern = new Pattern('/foo/bar/**')
+    const actual = ['/', '/foo', '/foo/bar', '/foo/bar/baz'].map(x =>
+      pattern.match(x)
+    )
+    expect(actual).toEqual([
+      MatchKind.None,
+      MatchKind.None,
+      MatchKind.All,
+      MatchKind.All
+    ])
   })
 
   it('is case insensitive match on Windows', () => {
@@ -121,6 +133,52 @@ describe('pattern', () => {
       x => new Pattern(path.join(Pattern.globEscape(process.cwd()), x))
     )
     expect(actual.map(x => x.segments)).toEqual(expected.map(x => x.segments))
+  })
+
+  it('sets trailing separator', () => {
+    expect(new Pattern(' foo ').trailingSeparator).toBeFalsy()
+    expect(new Pattern(' /foo ').trailingSeparator).toBeFalsy()
+    expect(new Pattern('! /foo ').trailingSeparator).toBeFalsy()
+    expect(new Pattern(' /foo/* ').trailingSeparator).toBeFalsy()
+    expect(new Pattern(' /foo/** ').trailingSeparator).toBeFalsy()
+    expect(new Pattern(' \\foo ').trailingSeparator).toBeFalsy()
+    expect(new Pattern('! \\foo ').trailingSeparator).toBeFalsy()
+    expect(new Pattern(' \\foo\\* ').trailingSeparator).toBeFalsy()
+    expect(new Pattern(' \\foo\\** ').trailingSeparator).toBeFalsy()
+    expect(new Pattern(' foo/ ').trailingSeparator).toBeTruthy()
+    expect(new Pattern(' /foo/ ').trailingSeparator).toBeTruthy()
+    expect(new Pattern('! /foo/ ').trailingSeparator).toBeTruthy()
+    expect(new Pattern(' /foo/*/ ').trailingSeparator).toBeTruthy()
+    expect(new Pattern(' /foo/**/ ').trailingSeparator).toBeTruthy()
+    expect(new Pattern(' foo\\ ').trailingSeparator).toEqual(
+      IS_WINDOWS ? true : false
+    )
+    expect(new Pattern(' \\foo\\ ').trailingSeparator).toEqual(
+      IS_WINDOWS ? true : false
+    )
+    expect(new Pattern('! \\foo\\ ').trailingSeparator).toEqual(
+      IS_WINDOWS ? true : false
+    )
+    expect(new Pattern(' \\foo\\*\\ ').trailingSeparator).toEqual(
+      IS_WINDOWS ? true : false
+    )
+    expect(new Pattern(' \\foo\\**\\ ').trailingSeparator).toEqual(
+      IS_WINDOWS ? true : false
+    )
+  })
+
+  it('supports including directories only', () => {
+    const pattern = new Pattern('/foo/**/') // trailing slash
+    const actual = ['/', '/foo/', '/foo/bar', '/foo/bar/baz'].map(x =>
+      pattern.match(x)
+    )
+    expect(pattern.trailingSeparator).toBeTruthy()
+    expect(actual).toEqual([
+      MatchKind.None,
+      MatchKind.Directory,
+      MatchKind.Directory,
+      MatchKind.Directory
+    ])
   })
 
   it('trims pattern', () => {

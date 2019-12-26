@@ -9,11 +9,38 @@ import {Path} from './internal-path'
 const IS_WINDOWS = process.platform === 'win32'
 
 export class Pattern {
+  /**
+   * Indicates whether matches should be excluded from the result set
+   */
   readonly negate: boolean = false
+
+  /**
+   * The directory to search. The literal path prior to the first glob segment.
+   */
   readonly searchPath: string
+
+  /**
+   * The path/pattern segments. Note, only the first segment (the root directory)
+   * may contain a directory separator charactor. Use the trailingSeparator field
+   * to determine whether the pattern ended with a trailing slash.
+   */
   readonly segments: string[]
-  readonly trailingSlash: boolean
+
+  /**
+   * Indicates the pattern should only match directories, not regular files.
+   */
+  readonly trailingSeparator: boolean
+
+  /**
+   * The Minimatch object used for matching
+   */
   private readonly minimatch: IMinimatch
+
+  /**
+   * Used to workaround a limitation with Minimatch when determining a partial
+   * match and the path is a root directory. For example, when the pattern is
+   * `/foo/**` or `C:\foo\**` and the path is `/` or `C:\`.
+   */
   private readonly rootRegExp: RegExp
 
   /* eslint-disable no-dupe-class-members */
@@ -57,7 +84,7 @@ export class Pattern {
     this.segments = new Path(pattern).segments
 
     // Trailing slash indicates the pattern should only match directories, not regular files
-    this.trailingSlash = pathHelper
+    this.trailingSeparator = pathHelper
       .normalizeSeparators(pattern)
       .endsWith(path.sep)
     pattern = pathHelper.safeTrimTrailingSeparator(pattern)
@@ -112,7 +139,7 @@ export class Pattern {
 
     // Match
     if (this.minimatch.match(itemPath)) {
-      return this.trailingSlash ? MatchKind.Directory : MatchKind.All
+      return this.trailingSeparator ? MatchKind.Directory : MatchKind.All
     }
 
     return MatchKind.None

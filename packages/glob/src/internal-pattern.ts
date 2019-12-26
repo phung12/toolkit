@@ -275,14 +275,16 @@ export class Pattern {
         // Closed?
         if (closed >= 0) {
           // Cannot convert
-          if (set.length > 1 || set === '!') {
+          if (set.length > 1) {
             return ''
           }
 
           // Convert to literal
-          literal += set
-          i = closed
-          continue
+          if (set) {
+            literal += set
+            i = closed
+            continue
+          }
         }
 
         // Otherwise fall thru

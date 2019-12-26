@@ -1,18 +1,30 @@
-import * as os from 'os'
+import * as io from '../../io/src/io'
 import * as path from 'path'
 import {MatchKind} from '../src/internal-match-kind'
-import {Pattern} from '../src/internal-pattern'
 import {promises as fs} from 'fs'
+
+// Mock os
+/* eslint-disable import/first */
+/* eslint-disable @typescript-eslint/promise-function-async */
+// Note, @typescript-eslint/promise-function-async is a false positive because the function
+// returns any. Fixed in a future version of jest.
+jest.mock('os', () => jest.requireActual('os'))
+const os = jest.requireMock('os')
+
+import {Pattern} from '../src/internal-pattern'
+
+jest.resetModuleRegistry()
 
 const IS_WINDOWS = process.platform === 'win32'
 
-// todo escapes root
-// todo escapes home
-// todo search path unescapes as much as possible
 // todo search path is always rooted
-// todo supports backslash escape on linux/mac
+// todo replace leading `\` on Windows with rooted drive path. fully qualified
 
 describe('pattern', () => {
+  beforeAll(async () => {
+    await io.rmRF(getTestTemp())
+  })
+
   it('counts leading negate markers', () => {
     const actual = [
       '/initial-includes/*.txt',
@@ -22,6 +34,38 @@ describe('pattern', () => {
       '!!!/initial-includes/three-negate-markers.txt'
     ].map(x => new Pattern(x).negate)
     expect(actual).toEqual([false, false, false, true, true])
+  })
+
+  it('escapes homedir', async () => {
+    const originalHomedir = os.homedir
+    const home = path.join(getTestTemp(), 'home-with-[and]')
+    await fs.mkdir(home, {recursive: true})
+    try {
+      os.homedir = () => home
+      const pattern = new Pattern('~/m*')
+
+      expect(pattern.searchPath).toBe(home)
+      expect(pattern.match(path.join(home, 'match'))).toBeTruthy()
+      expect(pattern.match(path.join(home, 'not-match'))).toBeFalsy()
+    } finally {
+      os.homedir = originalHomedir
+    }
+  })
+
+  it('escapes root', async () => {
+    const originalCwd = process.cwd()
+    const rootPath = path.join(getTestTemp(), 'cwd-with-[and]')
+    await fs.mkdir(rootPath, {recursive: true})
+    try {
+      process.chdir(rootPath)
+      const pattern = new Pattern('m*')
+
+      expect(pattern.searchPath).toBe(rootPath)
+      expect(pattern.match(path.join(rootPath, 'match'))).toBeTruthy()
+      expect(pattern.match(path.join(rootPath, 'not-match'))).toBeFalsy()
+    } finally {
+      process.chdir(originalCwd)
+    }
   })
 
   it('globstar matches immediately preceeding directory', () => {
@@ -191,4 +235,68 @@ describe('pattern', () => {
     expect(pattern.negate).toBeTruthy()
     expect(pattern.segments.reverse()[0]).toBe('hello.txt')
   })
+
+  it('unescapes segments to narrow search path', () => {
+    // Positive
+    let pattern = new Pattern('/foo/b[a]r/b*')
+    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}bar`)
+    expect(pattern.match('/foo/bar/baz')).toBeTruthy()
+    pattern = new Pattern('/foo/b[*]r/b*')
+    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b*r`)
+    expect(pattern.match('/foo/b*r/baz')).toBeTruthy()
+    expect(pattern.match('/foo/bar/baz')).toBeFalsy()
+    pattern = new Pattern('/foo/b[?]r/b*')
+    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b?r`)
+    expect(pattern.match('/foo/b?r/baz')).toBeTruthy()
+    expect(pattern.match('/foo/bar/baz')).toBeFalsy()
+    pattern = new Pattern('/foo/b[!]r/b*')
+    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b!r`)
+    expect(pattern.match('/foo/b!r/baz')).toBeTruthy()
+    pattern = new Pattern('/foo/b[[]ar/b*')
+    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b[ar`)
+    expect(pattern.match('/foo/b[ar/baz')).toBeTruthy()
+    pattern = new Pattern('/foo/b[]r/b*')
+    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b[]r`)
+    expect(pattern.match('/foo/b[]r/baz')).toBeTruthy()
+    pattern = new Pattern('/foo/b[r/b*')
+    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b[r`)
+    expect(pattern.match('/foo/b[r/baz')).toBeTruthy()
+    pattern = new Pattern('/foo/b]r/b*')
+    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b]r`)
+    expect(pattern.match('/foo/b]r/baz')).toBeTruthy()
+    if (!IS_WINDOWS) {
+      pattern = new Pattern('/foo/b\\[a]r/b*')
+      expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b[a]r`)
+      expect(pattern.match('/foo/b[a]r/baz')).toBeTruthy()
+      pattern = new Pattern('/foo/b[\\!]r/b*')
+      expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b!r`)
+      expect(pattern.match('/foo/b!r/baz')).toBeTruthy()
+      pattern = new Pattern('/foo/b[\\]]r/b*')
+      expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b]r`)
+      expect(pattern.match('/foo/b]r/baz')).toBeTruthy()
+      pattern = new Pattern('/foo/b[\\a]r/b*')
+      expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}bar`)
+      expect(pattern.match('/foo/bar/baz')).toBeTruthy()
+    }
+
+    // Negative
+    pattern = new Pattern('/foo/b[aA]r/b*')
+    expect(pattern.searchPath).toBe(`${path.sep}foo`)
+    pattern = new Pattern('/foo/b[!a]r/b*')
+    expect(pattern.searchPath).toBe(`${path.sep}foo`)
+    if (IS_WINDOWS) {
+      pattern = new Pattern('/foo/b\\[a]r/b*')
+      expect(pattern.searchPath).toBe(`\\foo\\b\\[a]r`)
+      expect(pattern.match('/foo/b/a]r/baz')).toBeTruthy()
+      pattern = new Pattern('/foo/b[\\!]r/b*')
+      expect(pattern.searchPath).toBe(
+        `${path.sep}foo${path.sep}b[${path.sep}!]r`
+      )
+      expect(pattern.match('/foo/b[/!]r/baz')).toBeTruthy()
+    }
+  })
 })
+
+function getTestTemp(): string {
+  return path.join(__dirname, '_temp', 'internal-pattern')
+}

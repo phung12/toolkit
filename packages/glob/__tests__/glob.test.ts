@@ -20,7 +20,7 @@ describe('glob', () => {
     //   <root>
     //   <root>/file
     //   <root>/symDir -> <root>
-    const root = path.join(getTestTemp(), 'glob-detects-cycle')
+    const root = path.join(getTestTemp(), 'detects-cycle')
     await fs.mkdir(root, {recursive: true})
     await fs.writeFile(path.join(root, 'file'), 'test file content')
     await createSymlinkDir(root, path.join(root, 'symDir'))
@@ -43,7 +43,7 @@ describe('glob', () => {
     //   <root>/folder-a/folder-b/folder-c/sym-folder -> <root>
     const root = path.join(
       getTestTemp(),
-      'glob-detects-deep-cycle-starting-from-middle'
+      'detects-deep-cycle-starting-from-middle'
     )
     await fs.mkdir(path.join(root, 'folder-a', 'folder-b', 'folder-c'), {
       recursive: true
@@ -121,7 +121,7 @@ describe('glob', () => {
     //   <root>/symDir -> <root>
     const root: string = path.join(
       getTestTemp(),
-      'glob-detects-cycle-starting-from-symlink'
+      'detects-cycle-starting-from-symlink'
     )
     await fs.mkdir(root, {recursive: true})
     await fs.writeFile(path.join(root, 'file'), 'test file content')
@@ -144,7 +144,7 @@ describe('glob', () => {
     //   <root>/symDir -> <root>/realDir
     const root = path.join(
       getTestTemp(),
-      'glob-does-not-follow-symlink-when-follow-false'
+      'does-not-follow-symlink-when-follow-false'
     )
     await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
     await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
@@ -169,7 +169,7 @@ describe('glob', () => {
     //   symDir -> realDir
     const root = path.join(
       getTestTemp(),
-      'glob-does-not-follow-symlink-when-search-path-is-symlink-and-follow-false'
+      'does-not-follow-symlink-when-search-path-is-symlink-and-follow-false'
     )
     await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
     await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
@@ -191,7 +191,7 @@ describe('glob', () => {
     //   <root>/realDir
     //   <root>/realDir/file
     //   <root>/symDir -> <root>/realDir
-    const root = path.join(getTestTemp(), 'glob-does-not-return-broken-symlink')
+    const root = path.join(getTestTemp(), 'does-not-return-broken-symlink')
     await fs.mkdir(root, {recursive: true})
     await createSymlinkDir(
       path.join(root, 'noSuch'),
@@ -220,7 +220,7 @@ describe('glob', () => {
     //   <root>/brokenSym -> <root>/noSuch
     const root = path.join(
       getTestTemp(),
-      'glob-does-not-return-broken-symlink-when-search-path-is-broken-symlink'
+      'does-not-return-broken-symlink-when-search-path-is-broken-symlink'
     )
     await fs.mkdir(root, {recursive: true})
     const brokenSymPath = path.join(root, 'brokenSym')
@@ -242,7 +242,7 @@ describe('glob', () => {
     //   <root>/realDir2/nested2/symDir -> <root>/noSuch
     const root = path.join(
       getTestTemp(),
-      'glob-does-not-search-paths-that-are-not-partial-matches'
+      'does-not-search-paths-that-are-not-partial-matches'
     )
     await fs.mkdir(path.join(root, 'realDir', 'nested'), {recursive: true})
     await fs.writeFile(
@@ -285,7 +285,7 @@ describe('glob', () => {
     //   <root>/symDir -> <root>/noSuch
     const root = path.join(
       getTestTemp(),
-      'glob-does-not-throw-for-broken-symlinks-that-are-not-matches-or-partial-matches'
+      'does-not-throw-for-broken-symlinks-that-are-not-matches-or-partial-matches'
     )
     await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
     await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
@@ -323,7 +323,7 @@ describe('glob', () => {
     //   <root>/realDir
     //   <root>/realDir/file
     //   <root>/symDir -> <root>/realDir
-    const root = path.join(getTestTemp(), 'glob-follows-symlink')
+    const root = path.join(getTestTemp(), 'follows-symlink')
     await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
     await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
     await createSymlinkDir(
@@ -348,7 +348,7 @@ describe('glob', () => {
     //   symDir -> realDir
     const root = path.join(
       getTestTemp(),
-      'glob-follows-symlink-when-search-path-is-symlink'
+      'follows-symlink-when-search-path-is-symlink'
     )
     await fs.mkdir(path.join(root, 'realDir'), {recursive: true})
     await fs.writeFile(path.join(root, 'realDir', 'file'), 'test file content')
@@ -373,7 +373,7 @@ describe('glob', () => {
     //   <root>/symDir -> <root>/realDir
     const root = path.join(
       getTestTemp(),
-      'glob-returns-broken-symlink-when-follow-false'
+      'returns-broken-symlink-when-follow-false'
     )
     await fs.mkdir(root, {recursive: true})
     await createSymlinkDir(
@@ -403,7 +403,7 @@ describe('glob', () => {
     //   <root>/brokenSym -> <root>/noSuch
     const root = path.join(
       getTestTemp(),
-      'glob-returns-broken-symlink-when-search-path-is-broken-symlink-and-follow-false'
+      'returns-broken-symlink-when-search-path-is-broken-symlink-and-follow-false'
     )
     await fs.mkdir(root, {recursive: true})
     const brokenSymPath = path.join(root, 'brokenSym')
@@ -424,7 +424,7 @@ describe('glob', () => {
     //   <root>/b-folder/b-folder/file
     //   <root>/b-folder/c-file
     //   <root>/c-file
-    const root = path.join(getTestTemp(), 'glob-returns-depth-first')
+    const root = path.join(getTestTemp(), 'returns-depth-first')
     await fs.mkdir(path.join(root, 'b-folder', 'b-folder'), {recursive: true})
     await fs.writeFile(path.join(root, 'a-file'), 'test a-file content')
     await fs.writeFile(
@@ -461,7 +461,7 @@ describe('glob', () => {
     //   <root>/dir-1/file-2
     //   <root>/dir-1/dir-2
     //   <root>/dir-1/dir-2/file-3
-    const root = path.join(getTestTemp(), 'glob-returns-descendants')
+    const root = path.join(getTestTemp(), 'returns-descendants')
     await fs.mkdir(path.join(root, 'dir-1', 'dir-2'), {recursive: true})
     await fs.writeFile(path.join(root, 'file-1'), '')
     await fs.writeFile(path.join(root, 'dir-1', 'file-2'), '')
@@ -507,7 +507,7 @@ describe('glob', () => {
     //   <root>/dir-1/dir-2/file-3
     const root = path.join(
       getTestTemp(),
-      'glob-returns-directories-only-when-trailing-slash-and-implicit-descendants-false'
+      'returns-directories-only-when-trailing-slash-and-implicit-descendants-false'
     )
     await fs.mkdir(path.join(root, 'dir-1', 'dir-2'), {recursive: true})
     await fs.writeFile(path.join(root, 'file-1'), '')
@@ -539,7 +539,7 @@ describe('glob', () => {
     //   <root>/.file
     //   <root>/.folder
     //   <root>/.folder/file
-    const root = path.join(getTestTemp(), 'glob-returns-hidden-files')
+    const root = path.join(getTestTemp(), 'returns-hidden-files')
     await createHiddenDirectory(path.join(root, '.emptyFolder'))
     await createHiddenDirectory(path.join(root, '.folder'))
     await createHiddenFile(path.join(root, '.file'), 'test .file content')
@@ -561,10 +561,7 @@ describe('glob', () => {
   it('returns normalized paths', async () => {
     // Create the following layout:
     //   <root>/hello/world.txt
-    const root: string = path.join(
-      getTestTemp(),
-      'glob-returns-normalized-paths'
-    )
+    const root: string = path.join(getTestTemp(), 'returns-normalized-paths')
     await fs.mkdir(path.join(root, 'hello'), {recursive: true})
     await fs.writeFile(path.join(root, 'hello', 'world.txt'), '')
 
@@ -583,7 +580,7 @@ describe('glob', () => {
     //   <root>/brokenSym -> <root>/noSuch
     const root = path.join(
       getTestTemp(),
-      'glob-throws-when-match-broken-symlink-and-omit-false'
+      'throws-when-match-broken-symlink-and-omit-false'
     )
     await fs.mkdir(root, {recursive: true})
     await createSymlinkDir(
@@ -605,7 +602,7 @@ describe('glob', () => {
     //   <root>/brokenSym -> <root>/noSuch
     const root = path.join(
       getTestTemp(),
-      'glob-throws-when-search-path-is-broken-symlink-and-omit-false'
+      'throws-when-search-path-is-broken-symlink-and-omit-false'
     )
     await fs.mkdir(root, {recursive: true})
     const brokenSymPath = path.join(root, 'brokenSym')
@@ -658,7 +655,7 @@ async function createHiddenFile(file: string, content: string): Promise<void> {
 }
 
 function getTestTemp(): string {
-  return path.join(__dirname, '_temp')
+  return path.join(__dirname, '_temp', 'glob')
 }
 
 /**

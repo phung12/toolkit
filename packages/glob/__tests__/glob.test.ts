@@ -6,8 +6,6 @@ import {promises as fs} from 'fs'
 
 const IS_WINDOWS = process.platform === 'win32'
 
-// todo add more tests from old lib findmatchtests
-
 /**
  * These test focus on the ability of glob to find files
  * and not on the pattern matching aspect
@@ -453,6 +451,79 @@ describe('glob', () => {
       path.join(root, 'b-folder', 'b-folder', 'file'),
       path.join(root, 'b-folder', 'c-file'),
       path.join(root, 'c-file')
+    ])
+  })
+
+  it('returns descendants', async () => {
+    // Create the following layout:
+    //   <root>/file-1
+    //   <root>/dir-1
+    //   <root>/dir-1/file-2
+    //   <root>/dir-1/dir-2
+    //   <root>/dir-1/dir-2/file-3
+    const root = path.join(getTestTemp(), 'glob-returns-descendants')
+    await fs.mkdir(path.join(root, 'dir-1', 'dir-2'), {recursive: true})
+    await fs.writeFile(path.join(root, 'file-1'), '')
+    await fs.writeFile(path.join(root, 'dir-1', 'file-2'), '')
+    await fs.writeFile(path.join(root, 'dir-1', 'dir-2', 'file-3'), '')
+
+    // When pattern ends with `/**/`
+    let pattern = `${root}${path.sep}**${path.sep}`
+    expect(
+      await glob.glob(pattern, {
+        implicitDescendants: false
+      })
+    ).toHaveLength(3) // sanity check
+    expect(await glob.glob(pattern)).toEqual([
+      root,
+      path.join(root, 'dir-1'),
+      path.join(root, 'dir-1', 'dir-2'),
+      path.join(root, 'dir-1', 'dir-2', 'file-3'),
+      path.join(root, 'dir-1', 'file-2'),
+      path.join(root, 'file-1')
+    ])
+
+    // When pattern ends with something other than `/**/`
+    pattern = `${root}${path.sep}**${path.sep}dir-?`
+    expect(
+      await glob.glob(pattern, {
+        implicitDescendants: false
+      })
+    ).toHaveLength(2) // sanity check
+    expect(await glob.glob(pattern)).toEqual([
+      path.join(root, 'dir-1'),
+      path.join(root, 'dir-1', 'dir-2'),
+      path.join(root, 'dir-1', 'dir-2', 'file-3'),
+      path.join(root, 'dir-1', 'file-2')
+    ])
+  })
+
+  it('returns directories only when trailing slash and implicit descendants false', async () => {
+    // Create the following layout:
+    //   <root>/file-1
+    //   <root>/dir-1
+    //   <root>/dir-1/file-2
+    //   <root>/dir-1/dir-2
+    //   <root>/dir-1/dir-2/file-3
+    const root = path.join(
+      getTestTemp(),
+      'glob-returns-directories-only-when-trailing-slash-and-implicit-descendants-false'
+    )
+    await fs.mkdir(path.join(root, 'dir-1', 'dir-2'), {recursive: true})
+    await fs.writeFile(path.join(root, 'file-1'), '')
+    await fs.writeFile(path.join(root, 'dir-1', 'file-2'), '')
+    await fs.writeFile(path.join(root, 'dir-1', 'dir-2', 'file-3'), '')
+
+    const pattern = `${root}${path.sep}**${path.sep}`
+    expect(await glob.glob(pattern)).toHaveLength(6) // sanity check
+    expect(
+      await glob.glob(pattern, {
+        implicitDescendants: false
+      })
+    ).toEqual([
+      root,
+      path.join(root, 'dir-1'),
+      path.join(root, 'dir-1', 'dir-2')
     ])
   })
 

@@ -6,6 +6,13 @@ import {promises as fs} from 'fs'
 
 const IS_WINDOWS = process.platform === 'win32'
 
+// todo escapes root
+// todo escapes home
+// todo search path unescapes as much as possible
+// todo search path is always rooted
+// todo supports backslash escape on linux/mac
+// todo test trailing slash
+
 describe('pattern', () => {
   it('counts leading negate markers', () => {
     const actual = [

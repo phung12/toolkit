@@ -12,9 +12,9 @@ export class Pattern {
   readonly negate: boolean = false
   readonly searchPath: string
   readonly segments: string[]
+  readonly trailingSlash: boolean
   private readonly minimatch: IMinimatch
   private readonly rootRegExp: RegExp
-  private readonly trailingSlash: boolean
 
   /* eslint-disable no-dupe-class-members */
   // Disable no-dupe-class-members due to false positive for method overload

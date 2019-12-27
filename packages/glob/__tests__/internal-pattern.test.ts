@@ -66,10 +66,14 @@ describe('pattern', () => {
   })
 
   it('globstar matches immediately preceeding directory', () => {
-    const pattern = new Pattern('/foo/bar/**')
-    const actual = ['/', '/foo', '/foo/bar', '/foo/bar/baz'].map(x =>
-      pattern.match(x)
-    )
+    const root = IS_WINDOWS ? 'C:\\' : '/'
+    const pattern = new Pattern(`${root}foo/bar/**`)
+    const actual = [
+      root,
+      `${root}foo`,
+      `${root}foo/bar`,
+      `${root}foo/bar/baz`
+    ].map(x => pattern.match(x))
     expect(actual).toEqual([
       MatchKind.None,
       MatchKind.None,
@@ -79,23 +83,25 @@ describe('pattern', () => {
   })
 
   it('is case insensitive match on Windows', () => {
-    const pattern = new Pattern('/Foo/**/Baz')
-    expect(pattern.match('/Foo/Baz')).toBe(MatchKind.All)
-    expect(pattern.match('/Foo/bAZ')).toBe(
+    const root = IS_WINDOWS ? 'C:\\' : '/'
+    const pattern = new Pattern(`${root}Foo/**/Baz`)
+    expect(pattern.match(`${root}Foo/Baz`)).toBe(MatchKind.All)
+    expect(pattern.match(`${root}Foo/bAZ`)).toBe(
       IS_WINDOWS ? MatchKind.All : MatchKind.None
     )
-    expect(pattern.match('/fOO/Baz')).toBe(
+    expect(pattern.match(`${root}fOO/Baz`)).toBe(
       IS_WINDOWS ? MatchKind.All : MatchKind.None
     )
-    expect(pattern.match('/fOO/bar/bAZ')).toBe(
+    expect(pattern.match(`${root}fOO/bar/bAZ`)).toBe(
       IS_WINDOWS ? MatchKind.All : MatchKind.None
     )
   })
 
   it('is case insensitive partial match on Windows', () => {
-    const pattern = new Pattern('/Foo/Bar/**/Baz')
-    expect(pattern.partialMatch('/Foo')).toBeTruthy()
-    expect(pattern.partialMatch('/fOO')).toBe(IS_WINDOWS ? true : false)
+    const root = IS_WINDOWS ? 'C:\\' : '/'
+    const pattern = new Pattern(`${root}Foo/Bar/**/Baz`)
+    expect(pattern.partialMatch(`${root}Foo`)).toBeTruthy()
+    expect(pattern.partialMatch(`${root}fOO`)).toBe(IS_WINDOWS ? true : false)
   })
 
   it('matches root', () => {
@@ -209,10 +215,14 @@ describe('pattern', () => {
   })
 
   it('supports including directories only', () => {
-    const pattern = new Pattern('/foo/**/') // trailing slash
-    const actual = ['/', '/foo/', '/foo/bar', '/foo/bar/baz'].map(x =>
-      pattern.match(x)
-    )
+    const root = IS_WINDOWS ? 'C:\\' : '/'
+    const pattern = new Pattern(`${root}foo/**/`) // trailing slash
+    const actual = [
+      root,
+      `${root}foo/`,
+      `${root}foo/bar`,
+      `${root}foo/bar/baz`
+    ].map(x => pattern.match(x))
     expect(pattern.trailingSeparator).toBeTruthy()
     expect(actual).toEqual([
       MatchKind.None,
@@ -235,32 +245,33 @@ describe('pattern', () => {
 
   it('unescapes segments to narrow search path', () => {
     // Positive
-    let pattern = new Pattern('/foo/b[a]r/b*')
-    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}bar`)
-    expect(pattern.match('/foo/bar/baz')).toBeTruthy()
-    pattern = new Pattern('/foo/b[*]r/b*')
-    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b*r`)
-    expect(pattern.match('/foo/b*r/baz')).toBeTruthy()
-    expect(pattern.match('/foo/bar/baz')).toBeFalsy()
-    pattern = new Pattern('/foo/b[?]r/b*')
-    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b?r`)
-    expect(pattern.match('/foo/b?r/baz')).toBeTruthy()
-    expect(pattern.match('/foo/bar/baz')).toBeFalsy()
-    pattern = new Pattern('/foo/b[!]r/b*')
-    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b!r`)
-    expect(pattern.match('/foo/b!r/baz')).toBeTruthy()
-    pattern = new Pattern('/foo/b[[]ar/b*')
-    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b[ar`)
-    expect(pattern.match('/foo/b[ar/baz')).toBeTruthy()
-    pattern = new Pattern('/foo/b[]r/b*')
-    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b[]r`)
-    expect(pattern.match('/foo/b[]r/baz')).toBeTruthy()
-    pattern = new Pattern('/foo/b[r/b*')
-    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b[r`)
-    expect(pattern.match('/foo/b[r/baz')).toBeTruthy()
-    pattern = new Pattern('/foo/b]r/b*')
-    expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b]r`)
-    expect(pattern.match('/foo/b]r/baz')).toBeTruthy()
+    const root = IS_WINDOWS ? 'C:\\' : '/'
+    let pattern = new Pattern(`${root}foo/b[a]r/b*`)
+    expect(pattern.searchPath).toBe(`${root}foo${path.sep}bar`)
+    expect(pattern.match(`${root}foo/bar/baz`)).toBeTruthy()
+    pattern = new Pattern(`${root}foo/b[*]r/b*`)
+    expect(pattern.searchPath).toBe(`${root}foo${path.sep}b*r`)
+    expect(pattern.match(`${root}foo/b*r/baz`)).toBeTruthy()
+    expect(pattern.match(`${root}foo/bar/baz`)).toBeFalsy()
+    pattern = new Pattern(`${root}foo/b[?]r/b*`)
+    expect(pattern.searchPath).toBe(`${root}foo${path.sep}b?r`)
+    expect(pattern.match(`${root}foo/b?r/baz`)).toBeTruthy()
+    expect(pattern.match(`${root}foo/bar/baz`)).toBeFalsy()
+    pattern = new Pattern(`${root}foo/b[!]r/b*`)
+    expect(pattern.searchPath).toBe(`${root}foo${path.sep}b!r`)
+    expect(pattern.match(`${root}foo/b!r/baz`)).toBeTruthy()
+    pattern = new Pattern(`${root}foo/b[[]ar/b*`)
+    expect(pattern.searchPath).toBe(`${root}foo${path.sep}b[ar`)
+    expect(pattern.match(`${root}foo/b[ar/baz`)).toBeTruthy()
+    pattern = new Pattern(`${root}foo/b[]r/b*`)
+    expect(pattern.searchPath).toBe(`${root}foo${path.sep}b[]r`)
+    expect(pattern.match(`${root}foo/b[]r/baz`)).toBeTruthy()
+    pattern = new Pattern(`${root}foo/b[r/b*`)
+    expect(pattern.searchPath).toBe(`${root}foo${path.sep}b[r`)
+    expect(pattern.match(`${root}foo/b[r/baz`)).toBeTruthy()
+    pattern = new Pattern(`${root}foo/b]r/b*`)
+    expect(pattern.searchPath).toBe(`${root}foo${path.sep}b]r`)
+    expect(pattern.match(`${root}foo/b]r/baz`)).toBeTruthy()
     if (!IS_WINDOWS) {
       pattern = new Pattern('/foo/b\\[a]r/b*')
       expect(pattern.searchPath).toBe(`${path.sep}foo${path.sep}b[a]r`)
@@ -277,19 +288,17 @@ describe('pattern', () => {
     }
 
     // Negative
-    pattern = new Pattern('/foo/b[aA]r/b*')
-    expect(pattern.searchPath).toBe(`${path.sep}foo`)
-    pattern = new Pattern('/foo/b[!a]r/b*')
-    expect(pattern.searchPath).toBe(`${path.sep}foo`)
+    pattern = new Pattern(`${root}foo/b[aA]r/b*`)
+    expect(pattern.searchPath).toBe(`${root}foo`)
+    pattern = new Pattern(`${root}foo/b[!a]r/b*`)
+    expect(pattern.searchPath).toBe(`${root}foo`)
     if (IS_WINDOWS) {
-      pattern = new Pattern('/foo/b\\[a]r/b*')
-      expect(pattern.searchPath).toBe(`\\foo\\b\\[a]r`)
-      expect(pattern.match('/foo/b/a]r/baz')).toBeTruthy()
-      pattern = new Pattern('/foo/b[\\!]r/b*')
-      expect(pattern.searchPath).toBe(
-        `${path.sep}foo${path.sep}b[${path.sep}!]r`
-      )
-      expect(pattern.match('/foo/b[/!]r/baz')).toBeTruthy()
+      pattern = new Pattern('C:/foo/b\\[a]r/b*')
+      expect(pattern.searchPath).toBe(`C:\\foo\\b\\[a]r`)
+      expect(pattern.match('C:/foo/b/a]r/baz')).toBeTruthy()
+      pattern = new Pattern('C:/foo/b[\\!]r/b*')
+      expect(pattern.searchPath).toBe('C:\\foo\\b[\\!]r')
+      expect(pattern.match('C:/foo/b[/!]r/baz')).toBeTruthy()
     }
   })
 })

@@ -5,14 +5,19 @@ import {IS_WINDOWS} from '../../io/src/io-util'
 
 describe('pattern-helper', () => {
   it('getSearchPaths omits negate search paths', () => {
+    const root = IS_WINDOWS ? 'C:\\' : '/'
     const patterns = patternHelper.parse(
-      ['/search1/foo/**', '/search2/bar/**', '!/search3/baz/**'],
+      [
+        `${root}search1/foo/**`,
+        `${root}search2/bar/**`,
+        `!${root}search3/baz/**`
+      ],
       patternHelper.getOptions()
     )
     const searchPaths = patternHelper.getSearchPaths(patterns)
     expect(searchPaths).toEqual([
-      `${path.sep}search1${path.sep}foo`,
-      `${path.sep}search2${path.sep}bar`
+      `${root}search1${path.sep}foo`,
+      `${root}search2${path.sep}bar`
     ])
   })
 
@@ -20,20 +25,20 @@ describe('pattern-helper', () => {
     if (IS_WINDOWS) {
       const patterns = patternHelper.parse(
         [
-          '\\Search1\\Foo\\**',
-          '\\sEARCH1\\fOO\\bar\\**',
-          '\\sEARCH1\\foo\\bar',
-          '\\Search2\\**',
-          '\\Search3\\Foo\\Bar\\**',
-          '\\sEARCH3\\fOO\\bAR\\**'
+          'C:\\Search1\\Foo\\**',
+          'C:\\sEARCH1\\fOO\\bar\\**',
+          'C:\\sEARCH1\\foo\\bar',
+          'C:\\Search2\\**',
+          'C:\\Search3\\Foo\\Bar\\**',
+          'C:\\sEARCH3\\fOO\\bAR\\**'
         ],
         patternHelper.getOptions()
       )
       const searchPaths = patternHelper.getSearchPaths(patterns)
       expect(searchPaths).toEqual([
-        '\\Search1\\Foo',
-        '\\Search2',
-        '\\Search3\\Foo\\Bar'
+        'C:\\Search1\\Foo',
+        'C:\\Search2',
+        'C:\\Search3\\Foo\\Bar'
       ])
     } else {
       const patterns = patternHelper.parse(
@@ -57,25 +62,26 @@ describe('pattern-helper', () => {
   })
 
   it('match supports interleaved exclude patterns', () => {
+    const root = IS_WINDOWS ? 'C:\\' : '/'
     const itemPaths = [
-      '/solution1/proj1/proj1.proj',
-      '/solution1/proj1/README.txt',
-      '/solution1/proj2/proj2.proj',
-      '/solution1/proj2/README.txt',
-      '/solution1/solution1.sln',
-      '/solution2/proj1/proj1.proj',
-      '/solution2/proj1/README.txt',
-      '/solution2/proj2/proj2.proj',
-      '/solution2/proj2/README.txt',
-      '/solution2/solution2.sln'
+      `${root}solution1/proj1/proj1.proj`,
+      `${root}solution1/proj1/README.txt`,
+      `${root}solution1/proj2/proj2.proj`,
+      `${root}solution1/proj2/README.txt`,
+      `${root}solution1/solution1.sln`,
+      `${root}solution2/proj1/proj1.proj`,
+      `${root}solution2/proj1/README.txt`,
+      `${root}solution2/proj2/proj2.proj`,
+      `${root}solution2/proj2/README.txt`,
+      `${root}solution2/solution2.sln`
     ]
     const patterns = patternHelper.parse(
       [
-        '/**/*.proj', // include all proj files
-        '/**/README.txt', // include all README files
-        '!/**/solution2/**', // exclude the solution 2 folder entirely
-        '/**/*.sln', // include all sln files
-        '!/**/proj2/README.txt' // exclude proj2 README files
+        `${root}**/*.proj`, // include all proj files
+        `${root}**/README.txt`, // include all README files
+        `!${root}**/solution2/**`, // exclude the solution 2 folder entirely
+        `${root}**/*.sln`, // include all sln files
+        `!${root}**/proj2/README.txt` // exclude proj2 README files
       ],
       patternHelper.getOptions({implicitDescendants: false})
     )
@@ -83,20 +89,26 @@ describe('pattern-helper', () => {
       x => patternHelper.match(patterns, x) === MatchKind.All
     )
     expect(matched).toEqual([
-      '/solution1/proj1/proj1.proj',
-      '/solution1/proj1/README.txt',
-      '/solution1/proj2/proj2.proj',
-      '/solution1/solution1.sln',
-      '/solution2/solution2.sln'
+      `${root}solution1/proj1/proj1.proj`,
+      `${root}solution1/proj1/README.txt`,
+      `${root}solution1/proj2/proj2.proj`,
+      `${root}solution1/solution1.sln`,
+      `${root}solution2/solution2.sln`
     ])
   })
 
   it('match supports excluding directories', () => {
-    const itemPaths = ['/', '/foo', '/foo/bar', '/foo/bar/baz']
+    const root = IS_WINDOWS ? 'C:\\' : '/'
+    const itemPaths = [
+      root,
+      `${root}foo`,
+      `${root}foo/bar`,
+      `${root}foo/bar/baz`
+    ]
     const patterns = patternHelper.parse(
       [
-        '/foo/**', // include all files and directories
-        '!/foo/**/' // exclude directories
+        `${root}foo/**`, // include all files and directories
+        `!${root}foo/**/` // exclude directories
       ],
       patternHelper.getOptions({implicitDescendants: false})
     )
@@ -110,10 +122,16 @@ describe('pattern-helper', () => {
   })
 
   it('match supports including directories only', () => {
-    const itemPaths = ['/', '/foo/', '/foo/bar', '/foo/bar/baz']
+    const root = IS_WINDOWS ? 'C:\\' : '/'
+    const itemPaths = [
+      root,
+      `${root}foo/`,
+      `${root}foo/bar`,
+      `${root}foo/bar/baz`
+    ]
     const patterns = patternHelper.parse(
       [
-        '/foo/**/' // include directories only
+        `${root}foo/**/` // include directories only
       ],
       patternHelper.getOptions({implicitDescendants: false})
     )
@@ -146,20 +164,27 @@ describe('pattern-helper', () => {
   })
 
   it('partialMatch skips negate patterns', () => {
+    const root = IS_WINDOWS ? 'C:\\' : '/'
     const patterns = patternHelper.parse(
       [
-        '/search1/foo/**',
-        '/search2/bar/**',
-        '!/search2/bar/**',
-        '!/search3/baz/**'
+        `${root}search1/foo/**`,
+        `${root}search2/bar/**`,
+        `!${root}search2/bar/**`,
+        `!${root}search3/baz/**`
       ],
       patternHelper.getOptions({implicitDescendants: false})
     )
-    expect(patternHelper.partialMatch(patterns, '/search1')).toBeTruthy()
-    expect(patternHelper.partialMatch(patterns, '/search1/foo')).toBeTruthy()
-    expect(patternHelper.partialMatch(patterns, '/search2')).toBeTruthy()
-    expect(patternHelper.partialMatch(patterns, '/search2/bar')).toBeTruthy()
-    expect(patternHelper.partialMatch(patterns, '/search3')).toBeFalsy()
-    expect(patternHelper.partialMatch(patterns, '/search3/bar')).toBeFalsy()
+    expect(patternHelper.partialMatch(patterns, `${root}search1`)).toBeTruthy()
+    expect(
+      patternHelper.partialMatch(patterns, `${root}search1/foo`)
+    ).toBeTruthy()
+    expect(patternHelper.partialMatch(patterns, `${root}search2`)).toBeTruthy()
+    expect(
+      patternHelper.partialMatch(patterns, `${root}search2/bar`)
+    ).toBeTruthy()
+    expect(patternHelper.partialMatch(patterns, `${root}search3`)).toBeFalsy()
+    expect(
+      patternHelper.partialMatch(patterns, `${root}search3/bar`)
+    ).toBeFalsy()
   })
 })

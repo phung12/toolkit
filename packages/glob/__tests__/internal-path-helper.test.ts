@@ -3,6 +3,8 @@ import * as pathHelper from '../src/internal-path-helper'
 
 const IS_WINDOWS = process.platform === 'win32'
 
+// todo test ensureAbsoluteRoot and hasAbsoluteRoot
+
 describe('path-helper', () => {
   it('dirname interprets directory name from paths', () => {
     assertDirectoryName('', '.')
@@ -124,167 +126,167 @@ describe('path-helper', () => {
     }
   })
 
-  it('ensureRooted roots paths', () => {
+  it('ensureRoot roots paths', () => {
     // Preserves relative pathing
-    assertEnsureRooted('/foo', '.', `/foo${path.sep}.`)
-    assertEnsureRooted('/foo/..', 'bar', `/foo/..${path.sep}bar`)
-    assertEnsureRooted('/foo', 'bar/../baz', `/foo${path.sep}bar/../baz`)
+    assertEnsureRoot('/foo', '.', `/foo${path.sep}.`)
+    assertEnsureRoot('/foo/..', 'bar', `/foo/..${path.sep}bar`)
+    assertEnsureRoot('/foo', 'bar/../baz', `/foo${path.sep}bar/../baz`)
 
     if (IS_WINDOWS) {
       // Already rooted - drive root
-      assertEnsureRooted('D:\\', 'C:/', 'C:/')
-      assertEnsureRooted('D:\\', 'a:/hello', 'a:/hello')
-      assertEnsureRooted('D:\\', 'C:\\', 'C:\\')
-      assertEnsureRooted('D:\\', 'C:\\hello', 'C:\\hello')
+      assertEnsureRoot('D:\\', 'C:/', 'C:/')
+      assertEnsureRoot('D:\\', 'a:/hello', 'a:/hello')
+      assertEnsureRoot('D:\\', 'C:\\', 'C:\\')
+      assertEnsureRoot('D:\\', 'C:\\hello', 'C:\\hello')
 
       // Already rooted - relative drive root
-      assertEnsureRooted('D:\\', 'C:', 'C:')
-      assertEnsureRooted('D:\\', 'C:hello', 'C:hello')
-      assertEnsureRooted('D:\\', 'C:hello/world', 'C:hello/world')
-      assertEnsureRooted('D:\\', 'C:hello\\world', 'C:hello\\world')
+      assertEnsureRoot('D:\\', 'C:', 'C:')
+      assertEnsureRoot('D:\\', 'C:hello', 'C:hello')
+      assertEnsureRoot('D:\\', 'C:hello/world', 'C:hello/world')
+      assertEnsureRoot('D:\\', 'C:hello\\world', 'C:hello\\world')
 
       // Already rooted - current drive root
-      assertEnsureRooted('D:\\', '/', '/')
-      assertEnsureRooted('D:\\', '/hello', '/hello')
-      assertEnsureRooted('D:\\', '\\', '\\')
-      assertEnsureRooted('D:\\', '\\hello', '\\hello')
+      assertEnsureRoot('D:\\', '/', '/')
+      assertEnsureRoot('D:\\', '/hello', '/hello')
+      assertEnsureRoot('D:\\', '\\', '\\')
+      assertEnsureRoot('D:\\', '\\hello', '\\hello')
 
       // Already rooted - UNC
-      assertEnsureRooted('D:\\', '//machine/share', '//machine/share')
-      assertEnsureRooted('D:\\', '\\\\machine\\share', '\\\\machine\\share')
+      assertEnsureRoot('D:\\', '//machine/share', '//machine/share')
+      assertEnsureRoot('D:\\', '\\\\machine\\share', '\\\\machine\\share')
 
       // Relative
-      assertEnsureRooted('D:', 'hello', 'D:hello')
-      assertEnsureRooted('D:/', 'hello', 'D:/hello')
-      assertEnsureRooted('D:/', 'hello/world', 'D:/hello/world')
-      assertEnsureRooted('D:\\', 'hello', 'D:\\hello')
-      assertEnsureRooted('D:\\', 'hello\\world', 'D:\\hello\\world')
-      assertEnsureRooted('D:/root', 'hello', 'D:/root\\hello')
-      assertEnsureRooted('D:/root', 'hello/world', 'D:/root\\hello/world')
-      assertEnsureRooted('D:\\root', 'hello', 'D:\\root\\hello')
-      assertEnsureRooted('D:\\root', 'hello\\world', 'D:\\root\\hello\\world')
-      assertEnsureRooted('D:/root/', 'hello', 'D:/root/hello')
-      assertEnsureRooted('D:/root/', 'hello/world', 'D:/root/hello/world')
-      assertEnsureRooted('D:\\root\\', 'hello', 'D:\\root\\hello')
-      assertEnsureRooted('D:\\root\\', 'hello\\world', 'D:\\root\\hello\\world')
+      assertEnsureRoot('D:', 'hello', 'D:hello')
+      assertEnsureRoot('D:/', 'hello', 'D:/hello')
+      assertEnsureRoot('D:/', 'hello/world', 'D:/hello/world')
+      assertEnsureRoot('D:\\', 'hello', 'D:\\hello')
+      assertEnsureRoot('D:\\', 'hello\\world', 'D:\\hello\\world')
+      assertEnsureRoot('D:/root', 'hello', 'D:/root\\hello')
+      assertEnsureRoot('D:/root', 'hello/world', 'D:/root\\hello/world')
+      assertEnsureRoot('D:\\root', 'hello', 'D:\\root\\hello')
+      assertEnsureRoot('D:\\root', 'hello\\world', 'D:\\root\\hello\\world')
+      assertEnsureRoot('D:/root/', 'hello', 'D:/root/hello')
+      assertEnsureRoot('D:/root/', 'hello/world', 'D:/root/hello/world')
+      assertEnsureRoot('D:\\root\\', 'hello', 'D:\\root\\hello')
+      assertEnsureRoot('D:\\root\\', 'hello\\world', 'D:\\root\\hello\\world')
     } else {
       // Already rooted
-      assertEnsureRooted('/root', '/', '/')
-      assertEnsureRooted('/root', '/hello', '/hello')
-      assertEnsureRooted('/root', '/hello/world', '/hello/world')
+      assertEnsureRoot('/root', '/', '/')
+      assertEnsureRoot('/root', '/hello', '/hello')
+      assertEnsureRoot('/root', '/hello/world', '/hello/world')
 
       // Not already rooted - Windows style drive root
-      assertEnsureRooted('/root', 'C:/', '/root/C:/')
-      assertEnsureRooted('/root', 'C:/hello', '/root/C:/hello')
-      assertEnsureRooted('/root', 'C:\\', '/root/C:\\')
+      assertEnsureRoot('/root', 'C:/', '/root/C:/')
+      assertEnsureRoot('/root', 'C:/hello', '/root/C:/hello')
+      assertEnsureRoot('/root', 'C:\\', '/root/C:\\')
 
       // Not already rooted - Windows style relative drive root
-      assertEnsureRooted('/root', 'C:', '/root/C:')
-      assertEnsureRooted('/root', 'C:hello/world', '/root/C:hello/world')
+      assertEnsureRoot('/root', 'C:', '/root/C:')
+      assertEnsureRoot('/root', 'C:hello/world', '/root/C:hello/world')
 
       // Not already rooted - Windows style current drive root
-      assertEnsureRooted('/root', '\\', '/root/\\')
-      assertEnsureRooted('/root', '\\hello\\world', '/root/\\hello\\world')
+      assertEnsureRoot('/root', '\\', '/root/\\')
+      assertEnsureRoot('/root', '\\hello\\world', '/root/\\hello\\world')
 
       // Not already rooted - Windows style UNC
-      assertEnsureRooted(
+      assertEnsureRoot(
         '/root',
         '\\\\machine\\share',
         '/root/\\\\machine\\share'
       )
 
       // Not already rooted - relative
-      assertEnsureRooted('/', 'hello', '/hello')
-      assertEnsureRooted('/', 'hello/world', '/hello/world')
-      assertEnsureRooted('/', 'hello\\world', '/hello\\world')
-      assertEnsureRooted('/root', 'hello', '/root/hello')
-      assertEnsureRooted('/root', 'hello/world', '/root/hello/world')
-      assertEnsureRooted('/root', 'hello\\world', '/root/hello\\world')
-      assertEnsureRooted('/root/', 'hello', '/root/hello')
-      assertEnsureRooted('/root/', 'hello/world', '/root/hello/world')
-      assertEnsureRooted('/root/', 'hello\\world', '/root/hello\\world')
-      assertEnsureRooted('/root\\', 'hello', '/root\\/hello')
-      assertEnsureRooted('/root\\', 'hello/world', '/root\\/hello/world')
-      assertEnsureRooted('/root\\', 'hello\\world', '/root\\/hello\\world')
+      assertEnsureRoot('/', 'hello', '/hello')
+      assertEnsureRoot('/', 'hello/world', '/hello/world')
+      assertEnsureRoot('/', 'hello\\world', '/hello\\world')
+      assertEnsureRoot('/root', 'hello', '/root/hello')
+      assertEnsureRoot('/root', 'hello/world', '/root/hello/world')
+      assertEnsureRoot('/root', 'hello\\world', '/root/hello\\world')
+      assertEnsureRoot('/root/', 'hello', '/root/hello')
+      assertEnsureRoot('/root/', 'hello/world', '/root/hello/world')
+      assertEnsureRoot('/root/', 'hello\\world', '/root/hello\\world')
+      assertEnsureRoot('/root\\', 'hello', '/root\\/hello')
+      assertEnsureRoot('/root\\', 'hello/world', '/root\\/hello/world')
+      assertEnsureRoot('/root\\', 'hello\\world', '/root\\/hello\\world')
     }
   })
 
   it('isRooted detects root', () => {
     if (IS_WINDOWS) {
       // Drive root
-      assertIsRooted('C:/', true)
-      assertIsRooted('a:/hello', true)
-      assertIsRooted('c:/hello', true)
-      assertIsRooted('z:/hello', true)
-      assertIsRooted('A:/hello', true)
-      assertIsRooted('C:/hello', true)
-      assertIsRooted('Z:/hello', true)
-      assertIsRooted('C:\\', true)
-      assertIsRooted('C:\\hello', true)
+      assertHasRoot('C:/', true)
+      assertHasRoot('a:/hello', true)
+      assertHasRoot('c:/hello', true)
+      assertHasRoot('z:/hello', true)
+      assertHasRoot('A:/hello', true)
+      assertHasRoot('C:/hello', true)
+      assertHasRoot('Z:/hello', true)
+      assertHasRoot('C:\\', true)
+      assertHasRoot('C:\\hello', true)
 
       // Relative drive root
-      assertIsRooted('C:', true)
-      assertIsRooted('C:hello', true)
-      assertIsRooted('C:hello/world', true)
-      assertIsRooted('C:hello\\world', true)
+      assertHasRoot('C:', true)
+      assertHasRoot('C:hello', true)
+      assertHasRoot('C:hello/world', true)
+      assertHasRoot('C:hello\\world', true)
 
       // Current drive root
-      assertIsRooted('/', true)
-      assertIsRooted('/hello', true)
-      assertIsRooted('/hello/world', true)
-      assertIsRooted('\\', true)
-      assertIsRooted('\\hello', true)
-      assertIsRooted('\\hello\\world', true)
+      assertHasRoot('/', true)
+      assertHasRoot('/hello', true)
+      assertHasRoot('/hello/world', true)
+      assertHasRoot('\\', true)
+      assertHasRoot('\\hello', true)
+      assertHasRoot('\\hello\\world', true)
 
       // UNC
-      assertIsRooted('//machine/share', true)
-      assertIsRooted('//machine/share/', true)
-      assertIsRooted('//machine/share/hello', true)
-      assertIsRooted('\\\\machine\\share', true)
-      assertIsRooted('\\\\machine\\share\\', true)
-      assertIsRooted('\\\\machine\\share\\hello', true)
+      assertHasRoot('//machine/share', true)
+      assertHasRoot('//machine/share/', true)
+      assertHasRoot('//machine/share/hello', true)
+      assertHasRoot('\\\\machine\\share', true)
+      assertHasRoot('\\\\machine\\share\\', true)
+      assertHasRoot('\\\\machine\\share\\hello', true)
 
       // Relative
-      assertIsRooted('hello', false)
-      assertIsRooted('hello/world', false)
-      assertIsRooted('hello\\world', false)
+      assertHasRoot('hello', false)
+      assertHasRoot('hello/world', false)
+      assertHasRoot('hello\\world', false)
     } else {
       // Root
-      assertIsRooted('/', true)
-      assertIsRooted('/hello', true)
-      assertIsRooted('/hello/world', true)
+      assertHasRoot('/', true)
+      assertHasRoot('/hello', true)
+      assertHasRoot('/hello/world', true)
 
       // Windows style drive root - false on OSX/Linux
-      assertIsRooted('C:/', false)
-      assertIsRooted('a:/hello', false)
-      assertIsRooted('c:/hello', false)
-      assertIsRooted('z:/hello', false)
-      assertIsRooted('A:/hello', false)
-      assertIsRooted('C:/hello', false)
-      assertIsRooted('Z:/hello', false)
-      assertIsRooted('C:\\', false)
-      assertIsRooted('C:\\hello', false)
+      assertHasRoot('C:/', false)
+      assertHasRoot('a:/hello', false)
+      assertHasRoot('c:/hello', false)
+      assertHasRoot('z:/hello', false)
+      assertHasRoot('A:/hello', false)
+      assertHasRoot('C:/hello', false)
+      assertHasRoot('Z:/hello', false)
+      assertHasRoot('C:\\', false)
+      assertHasRoot('C:\\hello', false)
 
       // Windows style relative drive root - false on OSX/Linux
-      assertIsRooted('C:', false)
-      assertIsRooted('C:hello', false)
-      assertIsRooted('C:hello/world', false)
-      assertIsRooted('C:hello\\world', false)
+      assertHasRoot('C:', false)
+      assertHasRoot('C:hello', false)
+      assertHasRoot('C:hello/world', false)
+      assertHasRoot('C:hello\\world', false)
 
       // Windows style current drive root - false on OSX/Linux
-      assertIsRooted('\\', false)
-      assertIsRooted('\\hello', false)
-      assertIsRooted('\\hello\\world', false)
+      assertHasRoot('\\', false)
+      assertHasRoot('\\hello', false)
+      assertHasRoot('\\hello\\world', false)
 
       // Windows style UNC - false on OSX/Linux
-      assertIsRooted('\\\\machine\\share', false)
-      assertIsRooted('\\\\machine\\share\\', false)
-      assertIsRooted('\\\\machine\\share\\hello', false)
+      assertHasRoot('\\\\machine\\share', false)
+      assertHasRoot('\\\\machine\\share\\', false)
+      assertHasRoot('\\\\machine\\share\\hello', false)
 
       // Relative
-      assertIsRooted('hello', false)
-      assertIsRooted('hello/world', false)
-      assertIsRooted('hello\\world', false)
+      assertHasRoot('hello', false)
+      assertHasRoot('hello/world', false)
+      assertHasRoot('hello\\world', false)
     }
   })
 
@@ -461,16 +463,16 @@ function assertDirectoryName(itemPath: string, expected: string): void {
   expect(pathHelper.dirname(itemPath)).toBe(expected)
 }
 
-function assertEnsureRooted(
+function assertEnsureRoot(
   root: string,
   itemPath: string,
   expected: string
 ): void {
-  expect(pathHelper.ensureRooted(root, itemPath)).toBe(expected)
+  expect(pathHelper.ensureRoot(root, itemPath)).toBe(expected)
 }
 
-function assertIsRooted(itemPath: string, expected: boolean): void {
-  expect(pathHelper.isRooted(itemPath)).toBe(expected)
+function assertHasRoot(itemPath: string, expected: boolean): void {
+  expect(pathHelper.hasRoot(itemPath)).toBe(expected)
 }
 
 function assertNormalizeSeparators(itemPath: string, expected: string): void {

@@ -23,7 +23,7 @@ export class Path {
       itemPath = pathHelper.safeTrimTrailingSeparator(itemPath)
 
       // Not rooted
-      if (!pathHelper.isRooted(itemPath)) {
+      if (!pathHelper.hasRoot(itemPath)) {
         this.segments = itemPath.split(path.sep)
       }
       // Rooted
@@ -67,7 +67,7 @@ export class Path {
         segment = pathHelper.normalizeSeparators(itemPath[i])
 
         // Root segment
-        if (i === 0 && pathHelper.isRooted(segment)) {
+        if (i === 0 && pathHelper.hasRoot(segment)) {
           segment = pathHelper.safeTrimTrailingSeparator(segment)
           assert(
             segment === pathHelper.dirname(segment),

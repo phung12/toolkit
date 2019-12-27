@@ -41,20 +41,84 @@ export function dirname(p: string): string {
 }
 
 /**
- * Roots the path if not already rooted
+ * Roots the path if not already rooted. On Windows, relative roots like `\`
+ * or `C:` are expanded based on the current working directory.
  */
-export function ensureRooted(root: string, p: string): string {
-  assert(root, `ensureRooted parameter 'root' must not be empty`)
-  assert(p, `ensureRooted parameter 'p' must not be empty`)
+export function ensureAbsoluteRoot(root: string, itemPath: string): string {
+  assert(root, `ensureAbsoluteRoot parameter 'root' must not be empty`)
+  assert(itemPath, `ensureAbsoluteRoot parameter 'itemPath' must not be empty`)
 
   // Already rooted
-  if (isRooted(p)) {
-    return p
+  if (hasAbsoluteRoot(itemPath)) {
+    return itemPath
+  }
+
+  // Windows
+  if (IS_WINDOWS) {
+    // Check for itemPath like C: or C:foo
+    if (itemPath.match(/^[A-Z]:[^\\/]|^[A-Z]:$/i)) {
+      let cwd = process.cwd()
+      assert(
+        cwd.match(/^[A-Z]:\\/i),
+        `Expected current directory to start with an absolute drive root. Actual '${cwd}'`
+      )
+
+      // Drive letter matches cwd? Expand to cwd
+      if (itemPath[0].toUpperCase() === cwd[0].toUpperCase()) {
+        if (cwd.endsWith('\\')) {
+          cwd += '\\'
+        }
+
+        // Preserve specified drive letter case (upper or lower)
+        return `${itemPath[0]}:\\${cwd.substr(3)}${itemPath.substr(2)}`
+      }
+
+      // Different drive letter
+      return `${itemPath[0]}:\\${itemPath.substr(2)}`
+    }
+    // Check for itemPath like \ or \foo
+    else if (normalizeSeparators(itemPath).match(/^\\$|^\\[^\\]/)) {
+      const cwd = process.cwd()
+      assert(
+        cwd.match(/^[A-Z]:\\/i),
+        `Expected current directory to start with an absolute drive root. Actual '${cwd}'`
+      )
+
+      return `${cwd[0]}:\\${itemPath.substr(1)}`
+    }
+  }
+
+  assert(
+    hasAbsoluteRoot(root),
+    `ensureAbsoluteRoot parameter 'root' must have an absolute root`
+  )
+
+  // Otherwise ensure root ends with a separator
+  if (root.endsWith('/') || (IS_WINDOWS && root.endsWith('\\'))) {
+    // Intentionally empty
+  } else {
+    // Append separator
+    root += path.sep
+  }
+
+  return root + itemPath
+}
+
+/**
+ * Roots the path if not already rooted
+ */
+export function ensureRoot(root: string, itemPath: string): string {
+  assert(root, `ensureRoot parameter 'root' must not be empty`)
+  assert(itemPath, `ensureRoot parameter 'itemPath' must not be empty`)
+
+  // Already rooted
+  if (hasRoot(itemPath)) {
+    return itemPath
   }
 
   // On Windows, check for root like C:
   if (IS_WINDOWS && root.match(/^[A-Z]:$/i)) {
-    return root + p
+    return root + itemPath
   }
 
   // Otherwise ensure root ends with a separator
@@ -65,28 +129,48 @@ export function ensureRooted(root: string, p: string): string {
     root += path.sep
   }
 
-  return root + p
+  return root + itemPath
 }
 
 /**
- * On OSX/Linux, true if path starts with `/`. On Windows, true for paths like:
- * `\`, `\hello`, `\\hello\share`, `C:`, and `C:\hello` (and using alternate separator).
+ * On Linux/macOS, true if path starts with `/`. On Windows, true for paths like:
+ * `\\hello\share` and `C:\hello` (and using alternate separator).
  */
-export function isRooted(p: string): boolean {
-  assert(p, `isRooted parameter 'p' must not be empty`)
+export function hasAbsoluteRoot(itemPath: string): boolean {
+  assert(itemPath, `hasAbsoluteRoot parameter 'itemPath' must not be empty`)
 
   // Normalize separators
-  p = normalizeSeparators(p)
+  itemPath = normalizeSeparators(itemPath)
+
+  // Windows
+  if (IS_WINDOWS) {
+    // E.g. \\hello\share or C:\hello
+    return itemPath.startsWith('\\\\') || /^[A-Z]:\\/i.test(itemPath)
+  }
+
+  // E.g. /hello
+  return itemPath.startsWith('/')
+}
+
+/**
+ * On Linux/macOS, true if path starts with `/`. On Windows, true for paths like:
+ * `\`, `\hello`, `\\hello\share`, `C:`, and `C:\hello` (and using alternate separator).
+ */
+export function hasRoot(itemPath: string): boolean {
+  assert(itemPath, `isRooted parameter 'itemPath' must not be empty`)
+
+  // Normalize separators
+  itemPath = normalizeSeparators(itemPath)
 
   // Windows
   if (IS_WINDOWS) {
     // E.g. \ or \hello or \\hello
     // E.g. C: or C:\hello
-    return p.startsWith('\\') || /^[A-Z]:/i.test(p)
+    return itemPath.startsWith('\\') || /^[A-Z]:/i.test(itemPath)
   }
 
   // E.g. /hello
-  return p.startsWith('/')
+  return itemPath.startsWith('/')
 }
 
 /**

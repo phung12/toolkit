@@ -3,22 +3,19 @@ import * as path from 'path'
 import {MatchKind} from '../src/internal-match-kind'
 import {promises as fs} from 'fs'
 
-// Mock os
+// Mock 'os' before importing Pattern
 /* eslint-disable import/first */
 /* eslint-disable @typescript-eslint/promise-function-async */
-// Note, @typescript-eslint/promise-function-async is a false positive because the function
-// returns any. Fixed in a future version of jest.
+// Note, @typescript-eslint/promise-function-async is a false positive due to the
+// mock factory delegate which returns any. Fixed in a future version of jest.
 jest.mock('os', () => jest.requireActual('os'))
 const os = jest.requireMock('os')
-
 import {Pattern} from '../src/internal-pattern'
-
 jest.resetModuleRegistry()
 
 const IS_WINDOWS = process.platform === 'win32'
 
-// todo search path is always rooted
-// todo replace leading `\` on Windows with rooted drive path. fully qualified
+// todo test ensures absolute root
 
 describe('pattern', () => {
   beforeAll(async () => {

@@ -62,7 +62,7 @@ export class Pattern {
       assert(segments.length, `Parameter 'segments' must not empty`)
       const root = Pattern.getLiteral(segments[0])
       assert(
-        root && pathHelper.isRooted(root),
+        root && pathHelper.hasAbsoluteRoot(root),
         `Parameter 'segments' first element must be a root path`
       )
       pattern = new Path(segments).toString().trim()
@@ -77,7 +77,7 @@ export class Pattern {
       pattern = pattern.substr(1).trim()
     }
 
-    // Normalize slashes and ensure rooted
+    // Normalize slashes and ensures absolute root
     pattern = Pattern.fixupPattern(pattern)
 
     // Segments
@@ -175,31 +175,25 @@ export class Pattern {
   }
 
   /**
-   * Normalizes slashes and ensures rooted
+   * Normalizes slashes and ensures absolute root
    */
   private static fixupPattern(pattern: string): string {
     // Empty
     assert(pattern, 'pattern cannot be empty')
 
-    // Must not use C: and C:foo format on Windows (for simplicity)
+    // Must not contain `.` segment, unless first segment
+    // Must not contain `..` segment
     const literalSegments = new Path(pattern).segments.map(x =>
       Pattern.getLiteral(x)
     )
-    assert(
-      !IS_WINDOWS || !/^[A-Z]:$/i.test(literalSegments[0]),
-      `The pattern '${pattern}' uses an unsupported root-directory prefix. When a drive letter is specified, use absolute path syntax.`
-    )
-
-    // Must not be `.` unless first segment
-    // Must not be `..`
     assert(
       literalSegments.every((x, i) => (x !== '.' || i === 0) && x !== '..'),
       `Invalid pattern '${pattern}'. Relative pathing '.' and '..' is not allowed.`
     )
 
-    // Must not contain globs in root, e.g. \\foo\b*
+    // Must not contain globs in root, e.g. Windows UNC path \\foo\b*r
     assert(
-      !pathHelper.isRooted(pattern) || literalSegments[0],
+      !pathHelper.hasAbsoluteRoot(pattern) || literalSegments[0],
       `Invalid pattern '${pattern}'. Root segment must not contain globs.`
     )
 
@@ -216,15 +210,15 @@ export class Pattern {
       const homedir = os.homedir()
       assert(homedir, 'Unable to determine HOME directory')
       assert(
-        pathHelper.isRooted(homedir),
+        pathHelper.hasAbsoluteRoot(homedir),
         `Expected HOME directory to be a rooted path. Actual '${homedir}'`
       )
       pattern = Pattern.globEscape(homedir) + pattern.substr(1)
       pattern = pathHelper.normalizeSeparators(pattern)
     }
-    // Otherwise ensure rooted
-    else if (!pathHelper.isRooted(pattern)) {
-      pattern = pathHelper.ensureRooted(
+    // Otherwise ensure absolute root
+    else if (!pathHelper.hasAbsoluteRoot(pattern)) {
+      pattern = pathHelper.ensureAbsoluteRoot(
         Pattern.globEscape(process.cwd()),
         pattern
       )
